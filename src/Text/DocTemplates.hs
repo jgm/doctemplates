@@ -1,5 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances,
-    OverloadedStrings, GeneralizedNewtypeDeriving #-}
+    OverloadedStrings, GeneralizedNewtypeDeriving, ScopedTypeVariables #-}
 {- |
    Module      : Text.Pandoc.Templates
    Copyright   : Copyright (C) 2009-2016 John MacFarlane
@@ -167,8 +167,8 @@ resolveVar var' val =
        Just (Array vec) -> maybe mempty (resolveVar []) $ vec !? 0
        Just (String t)  -> T.stripEnd t
        Just (Number n)  -> case floatingOrInteger n of
-                                   Left r  -> T.pack $ show r
-                                   Right i -> T.pack $ show i
+                                   Left (r :: Double)   -> T.pack $ show r
+                                   Right (i :: Integer) -> T.pack $ show i
        Just (Bool True) -> "true"
        Just (Object _)  -> "true"
        Just _           -> mempty
