@@ -10,12 +10,13 @@
    Portability : portable
 
 A simple templating system with variable substitution and conditionals.
-The following program illustrates its use:
+This module was formerly part of pandoc and is used for pandoc's
+templates.  The following program illustrates its use:
 
 > {-# LANGUAGE OverloadedStrings #-}
 > import Data.Text
 > import Data.Aeson
-> import Text.Pandoc.Templates
+> import Text.DocTemplates
 >
 > data Employee = Employee { firstName :: String
 >                          , lastName  :: String
@@ -25,16 +26,17 @@ The following program illustrates its use:
 >                                        , "last"  .= lastName e ]
 >                     , "salary" .= salary e ]
 >
-> employees :: [Employee]
-> employees = [ Employee "John" "Doe" Nothing
->             , Employee "Omar" "Smith" (Just 30000)
->             , Employee "Sara" "Chen" (Just 60000) ]
+> template :: Text
+> template = "$for(employee)$Hi, $employee.name.first$. $if(employee.salary)$You make $employee.salary$.$else$No salary data.$endif$$sep$\n$endfor$"
 >
-> template :: Template
-> template = either error id $ compileTemplate
->   "$for(employee)$Hi, $employee.name.first$. $if(employee.salary)$You make $employee.salary$.$else$No salary data.$endif$$sep$\n$endfor$"
->
-> main = putStrLn $ renderTemplate template $ object ["employee" .= employees ]
+> main = case compileTemplate template of
+>          Left e    -> error e
+>          Right t   -> putStrLn $ renderTemplate t $ object
+>                         ["employee" .=
+>                           [ Employee "John" "Doe" Nothing
+>                           , Employee "Omar" "Smith" (Just 30000)
+>                           , Employee "Sara" "Chen" (Just 60000) ]
+>                         ]
 
 A slot for an interpolated variable is a variable name surrounded
 by dollar signs.  To include a literal @$@ in your template, use
@@ -68,7 +70,7 @@ example above.
 -}
 
 module Text.DocTemplates ( renderTemplate
-                         , renderTemplate'
+                         , applyTemplate
                          , TemplateTarget(..)
                          , varListToJSON
                          , compileTemplate
@@ -98,6 +100,8 @@ import Data.Vector ((!?))
 import Control.Applicative (many, (<|>))
 import Data.Scientific (floatingOrInteger)
 
+-- | A 'Template' is essentially a function that takes
+-- a JSON 'Value' and produces 'Text'.
 newtype Template = Template { unTemplate :: Value -> Text }
                  deriving Monoid
 
@@ -118,6 +122,8 @@ instance TemplateTarget ByteString where
 instance TemplateTarget Html where
   toTarget = preEscapedText
 
+-- | A convenience function for passing in an association
+-- list of string values instead of a JSON 'Value'.
 varListToJSON :: [(String, String)] -> Value
 varListToJSON assoc = toJSON $ M.fromList assoc'
   where assoc' = [(T.pack k, toVal [T.pack z | (y,z) <- assoc,
@@ -128,6 +134,7 @@ varListToJSON assoc = toJSON $ M.fromList assoc'
         toVal []  = Null
         toVal xs  = toJSON xs
 
+-- An efficient specialization of nub.
 ordNub :: (Ord a) => [a] -> [a]
 ordNub l = go Set.empty l
   where
@@ -135,21 +142,23 @@ ordNub l = go Set.empty l
     go s (x:xs) = if x `Set.member` s then go s xs
                                       else x : go (Set.insert x s) xs
 
-renderTemplate :: (ToJSON a, TemplateTarget b) => Template -> a -> b
-renderTemplate (Template f) context = toTarget $ f $ toJSON context
-
--- Combines `renderTemplate` and `compileTemplate`.
-renderTemplate' :: (ToJSON a, TemplateTarget b) => Text -> a -> Either String b
-renderTemplate' t context =
-  case compileTemplate t of
-         Left e   -> Left e
-         Right f  -> Right $ renderTemplate f context
-
+-- | Compile a template.
 compileTemplate :: Text -> Either String Template
 compileTemplate template =
   case P.parse (pTemplate <* P.eof) "template" template of
        Left e   -> Left (show e)
        Right x  -> Right x
+
+-- | Render a compiled template using @context@ to resolve variables.
+renderTemplate :: (ToJSON a, TemplateTarget b) => Template -> a -> b
+renderTemplate (Template f) context = toTarget $ f $ toJSON context
+
+-- | Combines `renderTemplate` and `compileTemplate`.
+applyTemplate :: (ToJSON a, TemplateTarget b) => Text -> a -> Either String b
+applyTemplate t context =
+  case compileTemplate t of
+         Left e   -> Left e
+         Right f  -> Right $ renderTemplate f context
 
 var :: Variable -> Template
 var = Template . resolveVar
