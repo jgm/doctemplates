@@ -138,17 +138,18 @@ ordNub l = go Set.empty l
 renderTemplate :: (ToJSON a, TemplateTarget b) => Template -> a -> b
 renderTemplate (Template f) context = toTarget $ f $ toJSON context
 
+-- Combines `renderTemplate` and `compileTemplate`.
+renderTemplate' :: (ToJSON a, TemplateTarget b) => Text -> a -> Either String b
+renderTemplate' t context =
+  case compileTemplate t of
+         Left e   -> Left e
+         Right f  -> Right $ renderTemplate f context
+
 compileTemplate :: Text -> Either String Template
 compileTemplate template =
   case P.parse (pTemplate <* P.eof) "template" template of
        Left e   -> Left (show e)
        Right x  -> Right x
-
--- | Like 'renderTemplate', but compiles the template first,
--- raising an error if compilation fails.
-renderTemplate' :: (ToJSON a, TemplateTarget b) => Text -> a -> b
-renderTemplate' template =
-  renderTemplate (either error id $ compileTemplate template)
 
 var :: Variable -> Template
 var = Template . resolveVar

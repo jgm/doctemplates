@@ -4,6 +4,7 @@ import Text.DocTemplates
 import Test.Hspec
 import Data.Text
 import Data.Aeson
+import Data.Either
 
 data Employee = Employee { firstName :: String
                          , lastName  :: String
@@ -26,6 +27,16 @@ main :: IO ()
 main = hspec $ do
   describe "renderTemplate'" $ do
     it "works" $ do
-      renderTemplate' template (object ["employee" .= employees]) `shouldBe`
-        ("Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Text)
+      renderTemplate' template (object ["employee" .= employees])
+        `shouldBe`
+        (Right "Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Either String Text)
+    it "renders numbers appropriately as integer or floating" $ do
+      renderTemplate' "$m$ and $n$"
+        (object ["m" .= (5 :: Integer), "n" .= (7.3 :: Double)])
+        `shouldBe`
+        (Right "5 and 7.3" :: Either String Text)
+    it "fails with an incorrect template" $ do
+      renderTemplate' "$if(x$and$endif$" (object [])
+        `shouldBe`
+        (Left "\"template\" (line 1, column 6):\nunexpected \"$\"\nexpecting \".\" or \")$\"" :: Either String Text)
 
