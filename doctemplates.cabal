@@ -11,6 +11,7 @@ copyright:           2016 John MacFarlane
 category:            Text
 build-type:          Simple
 -- extra-source-files:
+data-files:          README.md
 cabal-version:       >=1.10
 
 library
