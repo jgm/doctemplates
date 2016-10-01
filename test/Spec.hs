@@ -4,7 +4,6 @@ import Text.DocTemplates
 import Test.Hspec
 import Data.Text
 import Data.Aeson
-import Data.Either
 
 data Employee = Employee { firstName :: String
                          , lastName  :: String
