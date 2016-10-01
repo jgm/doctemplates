@@ -25,6 +25,7 @@ cache:
 # matrix, you can use a line such as:
 #     addons: {apt: {packages: [libfcgi-dev,libgmp-dev]}}
 matrix:
+  include:
   - env: BUILD=stack ARGS="--resolver lts-7"
     compiler: ": #stack 7.10.3 osx"
     os: osx
