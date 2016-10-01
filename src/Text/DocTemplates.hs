@@ -88,11 +88,9 @@ import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
 import Data.List (intersperse)
-import System.FilePath ((</>), (<.>))
 import qualified Data.Map as M
 import qualified Data.HashMap.Strict as H
 import Data.Foldable (toList)
-import qualified Control.Exception.Extensible as E (try, IOException)
 import Text.Blaze.Html (Html)
 import Text.Blaze.Internal (preEscapedText)
 import Data.ByteString.Lazy (ByteString, fromChunks)
