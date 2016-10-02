@@ -84,6 +84,7 @@ import qualified Text.Parsec as P
 import Text.Parsec.Text (Parser)
 import qualified Data.Set as Set
 import Data.Monoid
+import Control.Applicative
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
@@ -95,7 +96,6 @@ import Text.Blaze.Html (Html)
 import Text.Blaze.Internal (preEscapedText)
 import Data.ByteString.Lazy (ByteString, fromChunks)
 import Data.Vector ((!?))
-import Control.Applicative (many, (<|>))
 import Data.Scientific (floatingOrInteger)
 
 -- | A 'Template' is essentially a function that takes
