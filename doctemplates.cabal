@@ -29,6 +29,7 @@ library
                        unordered-containers,
                        scientific
   default-language:    Haskell2010
+  ghc-options:         -Wall -fno-warn-unused-do-bind
 
 test-suite doctemplates-test
   type:                exitcode-stdio-1.0

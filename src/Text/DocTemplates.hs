@@ -83,7 +83,7 @@ import Data.Aeson (ToJSON(..), Value(..))
 import qualified Text.Parsec as P
 import Text.Parsec.Text (Parser)
 import qualified Data.Set as Set
-import Data.Monoid ((<>))
+import Data.Monoid
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.Text.Encoding (encodeUtf8)
