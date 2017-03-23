@@ -1,7 +1,7 @@
 name:                doctemplates
 version:             0.1.0.2
 synopsis:            Pandoc-style document templates
-description:         Please see README.md
+description:         A simple text templating system predominently used by Pandoc.
 homepage:            https://github.com/jgm/doctemplates#readme
 license:             BSD3
 license-file:        LICENSE
