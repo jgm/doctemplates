@@ -34,6 +34,11 @@ main = hspec $ do
         (object ["m" .= (5 :: Integer), "n" .= (7.3 :: Double)])
         `shouldBe`
         (Right "5 and 7.3" :: Either String Text)
+    it "handles comments" $ do
+      applyTemplate "hello $--there and $m$\nbar"
+        (object ["m" .= (5 :: Integer)])
+        `shouldBe`
+        (Right "hello \nbar" :: Either String Text)
     it "fails with an incorrect template" $ do
       applyTemplate "$if(x$and$endif$" (object [])
         `shouldBe`

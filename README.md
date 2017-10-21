@@ -62,3 +62,5 @@ iteration will be performed on its value.
 You may optionally specify separators using `$sep$`, as in the
 example above.
 
+Anything between the sequence `$--` and the end of the line
+will be treated as a comment.

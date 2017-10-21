@@ -215,6 +215,7 @@ pTemplate = do
                             pFor <|>
                             pNewline <|>
                             pVar <|>
+                            pComment <|>
                             pLit <|>
                             pEscapedDollar)
   return $ sp <> rest
@@ -242,6 +243,10 @@ pInitialSpace = do
 
 pEscapedDollar :: Parser Template
 pEscapedDollar = lit "$" <$ P.try (P.string "$$")
+
+pComment :: Parser Template
+pComment =
+  mempty <$ (P.try (P.string "$--") >> P.skipMany (P.satisfy (/='\n')))
 
 pVar :: Parser Template
 pVar = var <$> (P.try $ P.char '$' *> pIdent <* P.char '$')
