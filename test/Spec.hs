@@ -35,7 +35,7 @@ main = hspec $ do
         `shouldBe`
         (Right "5 and 7.3" :: Either String Text)
     it "handles comments" $ do
-      applyTemplate "hello $--there and $m$\nbar"
+      applyTemplate "hello $--there and $m$\n$-- comment\nbar"
         (object ["m" .= (5 :: Integer)])
         `shouldBe`
         (Right "hello \nbar" :: Either String Text)

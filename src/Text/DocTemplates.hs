@@ -245,8 +245,14 @@ pEscapedDollar :: Parser Template
 pEscapedDollar = lit "$" <$ P.try (P.string "$$")
 
 pComment :: Parser Template
-pComment =
-  mempty <$ (P.try (P.string "$--") >> P.skipMany (P.satisfy (/='\n')))
+pComment = do
+  pos <- P.getPosition
+  P.try (P.string "$--")
+  P.skipMany (P.satisfy (/='\n'))
+  -- If the comment begins in the first column, the line ending
+  -- will be consumed; otherwise not.
+  when (P.sourceColumn pos == 1) $ () <$ P.char '\n'
+  return mempty
 
 pVar :: Parser Template
 pVar = var <$> (P.try $ P.char '$' *> pIdent <* P.char '$')
