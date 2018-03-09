@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances,
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, CPP,
     OverloadedStrings, GeneralizedNewtypeDeriving, ScopedTypeVariables #-}
 {- |
    Module      : Text.Pandoc.Templates
@@ -97,11 +97,18 @@ import Text.Blaze.Internal (preEscapedText)
 import Data.ByteString.Lazy (ByteString, fromChunks)
 import Data.Vector ((!?))
 import Data.Scientific (floatingOrInteger)
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (Semigroup)
+#endif
 
 -- | A 'Template' is essentially a function that takes
 -- a JSON 'Value' and produces 'Text'.
 newtype Template = Template { unTemplate :: Value -> Text }
+#if MIN_VERSION_base(4,9,0)
+                 deriving (Semigroup, Monoid)
+#else
                  deriving Monoid
+#endif
 
 type Variable = [Text]
 
