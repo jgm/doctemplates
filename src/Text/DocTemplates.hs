@@ -50,7 +50,7 @@ one or more spaces or tabs, which will be ignored.
 To include a literal @$@ in the document, use @$$@. To include a literal
 @{{@, use @{{{{@.
 
-Anything between the sequence @$--@ or @{{--@ and the end of the line
+Anything between the sequence @$--@ or @{{@@--@ and the end of the line
 will be treated as a comment and omitted from the output.
 
 A slot for an interpolated variable is a variable name surrounded by
@@ -134,6 +134,7 @@ Examples:
 > {{ for(foo) }}
 >   - {{ foo.last }}, {{ foo.first }}
 > {{ endfor }}
+
 -}
 
 module Text.DocTemplates ( renderTemplate
