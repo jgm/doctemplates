@@ -42,5 +42,5 @@ main = hspec $ do
     it "fails with an incorrect template" $ do
       applyTemplate "$if(x$and$endif$" (object [])
         `shouldBe`
-        (Left "\"template\" (line 1, column 6):\nunexpected \"$\"\nexpecting \".\" or \")$\"" :: Either String Text)
+        (Left "\"template\" (line 1, column 6):\nunexpected \"$\"\nexpecting \".\" or \")\"" :: Either String Text)
 

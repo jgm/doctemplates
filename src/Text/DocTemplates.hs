@@ -168,6 +168,16 @@ replaceVar _ _ old = old
 
 --- parsing
 
+pOpen :: Parser ()
+pOpen = () <$ (P.char '$' >> P.skipMany pSpaceOrTab)
+
+pClose :: Parser ()
+pClose = () <$ (P.char '$' >> P.skipMany pSpaceOrTab)
+
+pEnclosed :: Parser a -> Parser a
+pEnclosed parser =
+  P.try $ pOpen *> parser <* pClose
+
 pTemplate :: Parser Template
 pTemplate = do
   sp <- P.option mempty pInitialSpace
@@ -180,11 +190,9 @@ pTemplate = do
                             pEscapedDollar)
   return $ sp <> rest
 
-takeWhile1 :: (Char -> Bool) -> Parser Text
-takeWhile1 f = T.pack <$> P.many1 (P.satisfy f)
-
 pLit :: Parser Template
-pLit = lit <$> takeWhile1 (\x -> x /='$' && x /= '\n')
+pLit = lit . T.pack <$>
+  P.many1 (P.notFollowedBy (pOpen <|> pClose) >> P.satisfy (/='\n'))
 
 pNewline :: Parser Template
 pNewline = do
@@ -194,7 +202,7 @@ pNewline = do
 
 pInitialSpace :: Parser Template
 pInitialSpace = do
-  sps <- takeWhile1 (==' ')
+  sps <- T.pack <$> P.many1 (P.satisfy (==' '))
   let indentVar = if T.null sps
                      then id
                      else indent (T.length sps)
@@ -207,7 +215,7 @@ pEscapedDollar = lit "$" <$ P.try (P.string "$$")
 pComment :: Parser Template
 pComment = do
   pos <- P.getPosition
-  P.try (P.string "$--")
+  P.try (pOpen >> P.string "--")
   P.skipMany (P.satisfy (/='\n'))
   -- If the comment begins in the first column, the line ending
   -- will be consumed; otherwise not.
@@ -234,38 +242,37 @@ pIdentPart = P.try $ do
 reservedWords :: [Text]
 reservedWords = ["else","endif","for","endfor","sep"]
 
+pSpaceOrTab :: Parser Char
+pSpaceOrTab = P.satisfy (\c -> c == ' ' || c == '\t')
+
 skipEndline :: Parser ()
-skipEndline = P.try $ P.skipMany (P.satisfy (`elem` (" \t" :: String))) >> P.char '\n' >> return ()
+skipEndline = P.try $ P.skipMany pSpaceOrTab >> P.char '\n' >> return ()
 
 pConditional :: Parser Template
 pConditional = do
-  P.try $ P.string "$if("
-  id' <- pIdent
-  P.string ")$"
+  id' <- pEnclosed $ P.string "if(" *> pIdent <* P.string ")"
   -- if newline after the "if", then a newline after "endif" will be swallowed
   multiline <- P.option False (True <$ skipEndline)
   ifContents <- pTemplate
   elseContents <- P.option mempty $ P.try $
-                      do P.string "$else$"
+                      do pEnclosed (P.string "else")
                          when multiline $ P.option () skipEndline
                          pTemplate
-  P.string "$endif$"
+  pEnclosed (P.string "endif")
   when multiline $ P.option () skipEndline
   return $ cond id' ifContents elseContents
 
 pFor :: Parser Template
 pFor = do
-  P.try $ P.string "$for("
-  id' <- pIdent
-  P.string ")$"
+  id' <- pEnclosed $ P.string "for(" *> pIdent <* P.string ")"
   -- if newline after the "for", then a newline after "endfor" will be swallowed
   multiline <- P.option False $ skipEndline >> return True
   contents <- pTemplate
   sep <- P.option mempty $
-           do P.try $ P.string "$sep$"
+           do pEnclosed (P.string "sep")
               when multiline $ P.option () skipEndline
               pTemplate
-  P.string "$endfor$"
+  pEnclosed (P.string "endfor")
   when multiline $ P.option () skipEndline
   return $ iter id' contents sep
 
