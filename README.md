@@ -8,7 +8,8 @@ Example:
 
 ``` haskell
 {-# LANGUAGE OverloadedStrings #-}
-import Data.Text
+import Data.Text (Text)
+import qualified Data.Text.IO as T
 import Data.Aeson
 import Text.DocTemplates
 
@@ -23,9 +24,10 @@ instance ToJSON Employee where
 template :: Text
 template = "$for(employee)$Hi, $employee.name.first$. $if(employee.salary)$You make $employee.salary$.$else$No salary data.$endif$$sep$\n$endfor$"
 
+main :: IO ()
 main = case compileTemplate template of
          Left e    -> error e
-         Right t   -> putStrLn $ renderTemplate t $ object
+         Right t   -> T.putStrLn $ renderTemplate t $ object
                         ["employee" .=
                           [ Employee "John" "Doe" Nothing
                           , Employee "Omar" "Smith" (Just 30000)
