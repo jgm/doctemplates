@@ -71,7 +71,6 @@ example above.
 
 module Text.DocTemplates ( renderTemplate
                          , applyTemplate
-                         , TemplateTarget(..)
                          , varListToJSON
                          , compileTemplate
                          , Template
@@ -87,14 +86,10 @@ import Data.Monoid
 import Control.Applicative
 import qualified Data.Text as T
 import Data.Text (Text)
-import Data.Text.Encoding (encodeUtf8)
 import Data.List (intersperse)
 import qualified Data.Map as M
 import qualified Data.HashMap.Strict as H
 import Data.Foldable (toList)
-import Text.Blaze.Html (Html)
-import Text.Blaze.Internal (preEscapedText)
-import Data.ByteString.Lazy (ByteString, fromChunks)
 import Data.Vector ((!?))
 import Data.Scientific (floatingOrInteger)
 import Data.Semigroup (Semigroup)
@@ -105,21 +100,6 @@ newtype Template = Template { unTemplate :: Value -> Text }
                  deriving (Semigroup, Monoid)
 
 type Variable = [Text]
-
-class TemplateTarget a where
-  toTarget :: Text -> a
-
-instance TemplateTarget Text where
-  toTarget = id
-
-instance TemplateTarget String where
-  toTarget = T.unpack
-
-instance TemplateTarget ByteString where
-  toTarget = fromChunks . (:[]) . encodeUtf8
-
-instance TemplateTarget Html where
-  toTarget = preEscapedText
 
 -- | A convenience function for passing in an association
 -- list of string values instead of a JSON 'Value'.
@@ -149,11 +129,11 @@ compileTemplate template =
        Right x  -> Right x
 
 -- | Render a compiled template using @context@ to resolve variables.
-renderTemplate :: (ToJSON a, TemplateTarget b) => Template -> a -> b
-renderTemplate (Template f) context = toTarget $ f $ toJSON context
+renderTemplate :: ToJSON a => Template -> a -> Text
+renderTemplate (Template f) context = f $ toJSON context
 
 -- | Combines `renderTemplate` and `compileTemplate`.
-applyTemplate :: (ToJSON a, TemplateTarget b) => Text -> a -> Either String b
+applyTemplate :: ToJSON a => Text -> a -> Either String Text
 applyTemplate t context =
   case compileTemplate t of
          Left e   -> Left e
