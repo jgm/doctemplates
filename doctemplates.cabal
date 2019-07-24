@@ -1,5 +1,5 @@
 name:                doctemplates
-version:             0.2.2.1
+version:             0.3
 synopsis:            Pandoc-style document templates
 description:         A simple text templating system used by pandoc.
 homepage:            https://github.com/jgm/doctemplates#readme
@@ -19,9 +19,6 @@ library
   exposed-modules:     Text.DocTemplates
   build-depends:       base >= 4.7 && < 5,
                        aeson,
-                       bytestring,
-                       blaze-markup,
-                       blaze-html,
                        text,
                        containers,
                        vector,
