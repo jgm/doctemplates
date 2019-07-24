@@ -168,15 +168,30 @@ replaceVar _ _ old = old
 
 --- parsing
 
-pOpen :: Parser ()
-pOpen = () <$ (P.char '$' >> P.skipMany pSpaceOrTab)
+pOpenDollar :: Parser (Parser ())
+pOpenDollar = pCloseDollar <$ P.char '$'
+  where pCloseDollar = () <$ P.char '$'
 
-pClose :: Parser ()
-pClose = () <$ (P.char '$' >> P.skipMany pSpaceOrTab)
+pOpenBraces :: Parser (Parser ())
+pOpenBraces = pCloseBraces <$ P.try (P.string "{{")
+  where pCloseBraces = () <$ P.try (P.string "}}")
+
+pOpen :: Parser (Parser ())
+pOpen = pOpenDollar <|> pOpenBraces
 
 pEnclosed :: Parser a -> Parser a
 pEnclosed parser =
-  P.try $ pOpen *> parser <* pClose
+  P.try $ do
+    closer <- pOpen
+    P.skipMany pSpaceOrTab
+    res <- parser
+    P.skipMany pSpaceOrTab
+    closer
+    return $ res
+
+pEscaped :: Parser Template
+pEscaped = (lit "$" <$ P.try (pOpenDollar >> pOpenDollar))
+       <|> (lit "{{" <$ P.try (pOpenBraces >> pOpenBraces))
 
 pTemplate :: Parser Template
 pTemplate = do
@@ -187,12 +202,17 @@ pTemplate = do
                             pVar <|>
                             pComment <|>
                             pLit <|>
-                            pEscapedDollar)
+                            pEscaped)
   return $ sp <> rest
 
 pLit :: Parser Template
 pLit = lit . T.pack <$>
-  P.many1 (P.notFollowedBy (pOpen <|> pClose) >> P.satisfy (/='\n'))
+  P.many1 (
+     P.satisfy (\c -> c /= '\n' && c /= '$' && c /= '{')
+     <|>
+     (P.notFollowedBy (P.string "$" <|> P.try (P.string "{{"))
+       >> P.satisfy (/= '\n'))
+     )
 
 pNewline :: Parser Template
 pNewline = do
@@ -209,9 +229,6 @@ pInitialSpace = do
   v <- P.option mempty $ indentVar <$> pVar
   return $ lit sps <> v
 
-pEscapedDollar :: Parser Template
-pEscapedDollar = lit "$" <$ P.try (P.string "$$")
-
 pComment :: Parser Template
 pComment = do
   pos <- P.getPosition
@@ -223,7 +240,7 @@ pComment = do
   return mempty
 
 pVar :: Parser Template
-pVar = var <$> P.try (P.char '$' *> pIdent <* P.char '$')
+pVar = var <$> pEnclosed pIdent
 
 pIdent :: Parser [Text]
 pIdent = do

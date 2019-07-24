@@ -22,11 +22,19 @@ template :: Text
 template =
   "$for(employee)$Hi, $employee.name.first$. $if(employee.salary)$You make $$$employee.salary$.$else$No salary data.$endif$$sep$\n$endfor$"
 
+template2 :: Text
+template2 =
+  "{{ for(employee) }}Hi, {{ employee.name.first }}. {{ if(employee.salary) }}You make $${{ employee.salary }}.{{ else }}No salary data.{{ endif }}{{ sep }}\n{{ endfor }}"
+
 main :: IO ()
 main = hspec $ do
   describe "applyTemplate" $ do
     it "works" $ do
       applyTemplate template (object ["employee" .= employees])
+        `shouldBe`
+        (Right "Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Either String Text)
+    it "works with {{}} delimiters" $ do
+      applyTemplate template2 (object ["employee" .= employees])
         `shouldBe`
         (Right "Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Either String Text)
     it "renders numbers appropriately as integer or floating" $ do
