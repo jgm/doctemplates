@@ -73,7 +73,6 @@ example above.
 
 module Text.DocTemplates ( renderTemplate
                          , applyTemplate
-                         , varListToJSON
                          , compileTemplate
                          , Template
                          ) where
@@ -102,18 +101,6 @@ newtype Template = Template { unTemplate :: Value -> Text }
                  deriving (Semigroup, Monoid)
 
 type Variable = [Text]
-
--- | A convenience function for passing in an association
--- list of string values instead of a JSON 'Value'.
-varListToJSON :: [(String, String)] -> Value
-varListToJSON assoc = toJSON $ M.fromList assoc'
-  where assoc' = [(T.pack k, toVal [T.pack z | (y,z) <- assoc,
-                                                not (null z),
-                                                y == k])
-                        | k <- ordNub $ map fst assoc ]
-        toVal [x] = toJSON x
-        toVal []  = Null
-        toVal xs  = toJSON xs
 
 -- An efficient specialization of nub.
 ordNub :: (Ord a) => [a] -> [a]
