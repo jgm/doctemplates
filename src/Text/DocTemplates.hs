@@ -82,13 +82,11 @@ import Control.Monad (guard, when)
 import Data.Aeson (ToJSON(..), Value(..))
 import qualified Text.Parsec as P
 import Text.Parsec.Text (Parser)
-import qualified Data.Set as Set
 import Data.Monoid
 import Control.Applicative
 import qualified Data.Text as T
 import Data.Text (Text)
 import Data.List (intersperse)
-import qualified Data.Map as M
 import qualified Data.HashMap.Strict as H
 import Data.Foldable (toList)
 import Data.Vector ((!?))
@@ -101,14 +99,6 @@ newtype Template = Template { unTemplate :: Value -> Text }
                  deriving (Semigroup, Monoid)
 
 type Variable = [Text]
-
--- An efficient specialization of nub.
-ordNub :: (Ord a) => [a] -> [a]
-ordNub l = go Set.empty l
-  where
-    go _ [] = []
-    go s (x:xs) = if x `Set.member` s then go s xs
-                                      else x : go (Set.insert x s) xs
 
 -- | Compile a template.
 compileTemplate :: Text -> Either String Template
@@ -173,7 +163,7 @@ setVar (Template f) var' val = Template $ f . replaceVar var' val
 replaceVar :: Variable -> Value -> Value -> Value
 replaceVar []     new _          = new
 replaceVar (v:vs) new (Object o) =
-  Object $ H.adjust (\x -> replaceVar vs new x) v o
+  Object $ H.adjust (replaceVar vs new) v o
 replaceVar _ _ old = old
 
 --- parsing
@@ -225,7 +215,7 @@ pComment = do
   return mempty
 
 pVar :: Parser Template
-pVar = var <$> (P.try $ P.char '$' *> pIdent <* P.char '$')
+pVar = var <$> P.try (P.char '$' *> pIdent <* P.char '$')
 
 pIdent :: Parser [Text]
 pIdent = do
