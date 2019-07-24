@@ -40,35 +40,100 @@ templates.  The following program illustrates its use:
 >                           , Employee "Sara" "Chen" (Just 60000) ]
 >                         ]
 
-A slot for an interpolated variable is a variable name surrounded
-by dollar signs.  To include a literal @$@ in your template, use
-@$$@.  Variable names must begin with a letter and can contain letters,
-numbers, @_@, @-@, and @.@.
+To mark variables and control structures in the template, either @$@…@$@
+or @{{@…@}}@ may be used as delimiters. The styles may also be mixed in
+the same template, but the opening and closing delimiter must match in
+each case. The opening delimiter may be followed by one or more spaces
+or tabs, which will be ignored. The closing delimiter may be followed by
+one or more spaces or tabs, which will be ignored.
 
-The values of variables are determined by a JSON object that is
-passed as a parameter to @renderTemplate@.  So, for example,
-@title@ will return the value of the @title@ field, and
-@employee.salary@ will return the value of the @salary@ field
-of the object that is the value of the @employee@ field.
+To include a literal @$@ in the document, use @$$@. To include a literal
+@{{@, use @{{{{@.
+
+Anything between the sequence @$--@ or @{{--@ and the end of the line
+will be treated as a comment and omitted from the output.
+
+A slot for an interpolated variable is a variable name surrounded by
+matched delimiters. Variable names must begin with a letter and can
+contain letters, numbers, @_@, @-@, and @.@. The keywords @if@, @else@,
+@endif@, @for@, @sep@, and @endfor@ may not be used as variable names.
+Examples:
+
+> $foo$
+> $foo.bar.baz$
+> $foo_bar.baz-bim$
+> $ foo $
+> {{foo}}
+> {{foo.bar.baz}}
+> {{foo_bar.baz-bim}}
+> {{ foo }}
+
+The values of variables are determined by a JSON object that is passed
+as a parameter to @renderTemplate@. So, for example, @title@ will return
+the value of the @title@ field, and @employee.salary@ will return the
+value of the @salary@ field of the object that is the value of the
+@employee@ field.
 
 The value of a variable will be indented to the same level as the
-variable.
+opening delimiter of the variable.
 
-A conditional begins with @$if(variable_name)$@ and ends with @$endif$@.
-It may optionally contain an @$else$@ section.  The if section is
-used if @variable_name@ has a non-null value, otherwise the else section
-is used.
+A conditional begins with @if(variable)@ (enclosed in matched
+delimiters) and ends with @endif@ (enclosed in matched delimiters). It
+may optionally contain an @else@ (enclosed in matched delimiters). The
+@if@ section is used if @variable@ has a non-null value, otherwise the
+@else@ section is used (if present). Examples:
+
+> $if(foo)$bar$endif$
+>
+> $if(foo)$
+>   $foo$
+> $endif$
+>
+> $if(foo)$
+> part one
+> $else$
+> part two
+> $endif$
+>
+> {{if(foo)}}bar{{endif}}
+>
+> {{if(foo)}}
+>   {{foo}}
+> {{endif}}
+>
+> {{if(foo)}}
+> {{ foo.bar }}
+> {{else}}
+> no foo!
+> {{endif}}
 
 Conditional keywords should not be indented, or unexpected spacing
 problems may occur.
 
-The @$for$@ keyword can be used to iterate over an array.  If
-the value of the associated variable is not an array, a single
-iteration will be performed on its value.
+A for loop begins with @for(variable)@ (enclosed in matched delimiters)
+and ends with @endfor@ (enclosed in matched delimiters. If @variable@ is
+an array, the material inside the loop will be evaluated repeatedly,
+with @variable@ being set to each value of the array in turn. If the
+value of the associated variable is not an array, a single iteration
+will be performed on its value.
 
-You may optionally specify separators using @$sep$@, as in the
-example above.
+You may optionally specify a separator between consecutive values using
+@sep@ (enclosed in matched delimiters). The material between @sep@ and
+the @endfor@ is the separator.
 
+Examples:
+
+> $for(foo)$$foo$$sep$, $endfor$
+>
+> $for(foo)$
+>   - $foo.last$, $foo.first$
+> $endfor$
+>
+> {{ for(foo) }}{{ foo }}{{ sep }}, {{ endfor }}
+>
+> {{ for(foo) }}
+>   - {{ foo.last }}, {{ foo.first }}
+> {{ endfor }}
 -}
 
 module Text.DocTemplates ( renderTemplate
