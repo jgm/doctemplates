@@ -155,6 +155,7 @@ import Control.Monad (guard, when)
 import Data.Aeson (Value(..), ToJSON(..))
 import qualified Text.Parsec as P
 import Text.Parsec.Text (Parser)
+import Control.Monad.State
 import Control.Applicative
 import qualified Data.Text as T
 import Data.Data (Data)
@@ -194,30 +195,41 @@ instance Monoid Variable where
   mempty = Variable []
 
 renderTemplate :: ToJSON a => Template -> a -> Text
-renderTemplate (Template []) _ = mempty
-renderTemplate (Template (x:xs)) context = thisPart <> rest
+renderTemplate t context = evalState (renderer t (toJSON context)) 0
+
+renderer :: Template -> Value -> State Int Text
+renderer (Template xs) val = mconcat <$> mapM renderPart xs
   where
-   val = toJSON context
-   rest = renderTemplate (Template xs) val
-   thisPart =
+   modifyIndent t = do
+     ind <- get
+     put $ T.foldl' (\cur c ->
+                 case c of
+                   '\n' -> 0
+                   _    -> cur + 1) ind t
+   renderPart x =
      case x of
-       Literal t -> t
-       Interpolate v -> resolveVar v val
-       Conditional v ift elset -> renderTemplate branch val
+       Literal t -> do
+         modifyIndent t
+         return t
+       Interpolate v -> do
+         ind <- get
+         let t = indent ind $ resolveVar v val
+         modifyIndent t
+         return t
+       Conditional v ift elset -> renderer branch val
          where branch = case resolveVar v val of
                           "" -> elset
                           _  -> ift
        Iterate v t sep ->
          case multiLookup (unVariable v) val of
-           Just (Array vec) ->
-             mconcat $ intersperse sep' iters
-             where sep' = renderTemplate sep val
-                   iters = map (renderTemplate t)
-                           (map (\newv -> replaceVar v newv val) (toList vec))
+           Just (Array vec) -> do
+             sep' <- renderer sep val
+             iters <- mapM (renderer t)
+                         (map (\newv -> replaceVar v newv val) (toList vec))
+             return $ mconcat $ intersperse sep' iters
            _ -> case resolveVar v val of
-                  "" -> mempty
-                  _  -> renderTemplate t val
-
+                  "" -> return mempty
+                  _  -> renderer t val
 
 compileTemplate :: Text -> Either String Template
 compileTemplate template =
@@ -383,7 +395,7 @@ replaceVar (Variable (v:vs)) new (Object o) =
   Object $ H.adjust (replaceVar (Variable vs) new) v o
 replaceVar _ _ old = old
 
--- indent :: Int -> Text -> Text
--- indent 0   = id
--- indent ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
+indent :: Int -> Text -> Text
+indent 0   = id
+indent ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
 

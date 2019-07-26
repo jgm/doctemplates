@@ -23,6 +23,7 @@ library
                        containers,
                        vector,
                        parsec,
+                       mtl,
                        unordered-containers,
                        scientific
   if !impl(ghc >= 8.0)
