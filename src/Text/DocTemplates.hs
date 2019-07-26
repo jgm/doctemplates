@@ -152,7 +152,7 @@ module Text.DocTemplates ( renderTemplate
 
 import Data.Char (isAlphaNum)
 import Control.Monad (guard, when)
-import Data.Aeson (Value(..))
+import Data.Aeson (Value(..), ToJSON(..))
 import qualified Text.Parsec as P
 import Text.Parsec.Text (Parser)
 import Control.Applicative
@@ -193,10 +193,11 @@ instance Semigroup Variable where
 instance Monoid Variable where
   mempty = Variable []
 
-renderTemplate :: Template -> Value -> Text
+renderTemplate :: ToJSON a => Template -> a -> Text
 renderTemplate (Template []) _ = mempty
-renderTemplate (Template (x:xs)) val = thisPart <> rest
+renderTemplate (Template (x:xs)) context = thisPart <> rest
   where
+   val = toJSON context
    rest = renderTemplate (Template xs) val
    thisPart =
      case x of
@@ -224,7 +225,7 @@ compileTemplate template =
        Left e   -> Left (show e)
        Right x  -> Right x
 
-applyTemplate :: Text -> Value -> Either String Text
+applyTemplate :: ToJSON a => Text -> a -> Either String Text
 applyTemplate t val =
   case compileTemplate t of
     Left e   -> Left e
