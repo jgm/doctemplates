@@ -47,16 +47,15 @@ templates.  The following program illustrates its use:
 >                         ]
 
 To mark variables and control structures in the template, either @$@…@$@
-or @{{@…@}}@ may be used as delimiters. The styles may also be mixed in
+or @${@…@}@ may be used as delimiters. The styles may also be mixed in
 the same template, but the opening and closing delimiter must match in
 each case. The opening delimiter may be followed by one or more spaces
 or tabs, which will be ignored. The closing delimiter may be followed by
 one or more spaces or tabs, which will be ignored.
 
-To include a literal @$@ in the document, use @$$@. To include a literal
-@{{@, use @{{{{@.
+To include a literal @$@ in the document, use @$$@.
 
-Anything between the sequence @$--@ or @{{@@--@ and the end of the line
+Anything between the sequence @$--@ and the end of the line
 will be treated as a comment and omitted from the output.
 
 A slot for an interpolated variable is a variable name surrounded by
@@ -69,10 +68,10 @@ Examples:
 > $foo.bar.baz$
 > $foo_bar.baz-bim$
 > $ foo $
-> {{foo}}
-> {{foo.bar.baz}}
-> {{foo_bar.baz-bim}}
-> {{ foo }}
+> ${foo}
+> ${foo.bar.baz}
+> ${foo_bar.baz-bim}
+> ${ foo }
 
 The values of variables are determined by a JSON object that is passed
 as a parameter to @renderTemplate@. So, for example, @title@ will return
@@ -101,17 +100,17 @@ may optionally contain an @else@ (enclosed in matched delimiters). The
 > part two
 > $endif$
 >
-> {{if(foo)}}bar{{endif}}
+> ${if(foo)}bar${endif}
 >
-> {{if(foo)}}
->   {{foo}}
-> {{endif}}
+> ${if(foo)}
+>   ${foo}
+> ${endif}
 >
-> {{if(foo)}}
-> {{ foo.bar }}
-> {{else}}
+> ${if(foo)}
+> ${ foo.bar }
+> ${else}
 > no foo!
-> {{endif}}
+> ${endif}
 
 Conditional keywords should not be indented, or unexpected spacing
 problems may occur.
@@ -135,11 +134,12 @@ Examples:
 >   - $foo.last$, $foo.first$
 > $endfor$
 >
-> {{ for(foo) }}{{ foo }}{{ sep }}, {{ endfor }}
+> ${ for(foo) }${ foo }${ sep }, ${ endfor }
 >
-> {{ for(foo) }}
->   - {{ foo.last }}, {{ foo.first }}
-> {{ endfor }}
+> ${ for(foo) }
+>   - ${ foo.last }, ${ foo.first }
+> ${ endfor }
+
 
 -}
 
@@ -265,11 +265,7 @@ pTemplate = do
 
 pLit :: Parser TemplatePart
 pLit = Literal . mconcat <$>
-  P.many1 (
-     (T.pack <$> P.many1 (P.satisfy (\c -> c /= '$' && c /= '{')))
-     <|>
-     ("{" <$ P.try (P.char '{' >> P.notFollowedBy (P.char '{')))
-     )
+  P.many1 (T.pack <$> P.many1 (P.satisfy (/= '$')))
 
 backupSourcePos :: Int -> Parser ()
 backupSourcePos n = do
@@ -277,10 +273,7 @@ backupSourcePos n = do
   P.setPosition $ P.incSourceColumn pos (- n)
 
 pEscape :: Parser TemplatePart
-pEscape = do
-  (Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1))
-  <|>
-  (Literal "{{" <$ P.try (P.string "{{{{" <* backupSourcePos 2))
+pEscape = (Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1))
 
 pDirective :: Parser TemplatePart
 pDirective = pConditional <|> pForLoop <|> pInterpolate
@@ -341,7 +334,7 @@ pSpaceOrTab = P.satisfy (\c -> c == ' ' || c == '\t')
 pComment :: Parser ()
 pComment = do
   pos <- P.getPosition
-  P.try (pOpen >> P.string "--")
+  P.try (P.string "$--")
   P.skipMany (P.satisfy (/='\n'))
   -- If the comment begins in the first column, the line ending
   -- will be consumed; otherwise not.
@@ -350,15 +343,16 @@ pComment = do
 
 pOpenDollar :: Parser (Parser ())
 pOpenDollar =
-  pCloseDollar <$ P.try (P.char '$' <* P.notFollowedBy (P.char '$'))
+  pCloseDollar <$ P.try (P.char '$' <*
+                   P.notFollowedBy (P.char '$' <|> P.char '{'))
   where
    pCloseDollar = () <$ P.char '$'
 
 pOpenBraces :: Parser (Parser ())
 pOpenBraces =
-  pCloseBraces <$ P.try (P.string "{{" <* P.notFollowedBy (P.string "{{"))
+  pCloseBraces <$ P.try (P.string "${" <* P.notFollowedBy (P.char '}'))
   where
-   pCloseBraces = () <$ P.try (P.string "}}")
+   pCloseBraces = () <$ P.try (P.char '}')
 
 pOpen :: Parser (Parser ())
 pOpen = pOpenDollar <|> pOpenBraces

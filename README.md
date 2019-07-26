@@ -36,7 +36,7 @@ main = case compileTemplate template of
 ```
 
 To mark variables and control structures in the template,
-either `$`...`$` or `{{`...`}}` may be used as delimiters.
+either `$`...`$` or `${`...`}` may be used as delimiters.
 The styles may also be mixed in the same template, but the
 opening and closing delimiter must match in each case.  The
 opening delimiter may be followed by one or more spaces
@@ -45,9 +45,8 @@ be followed by one or more spaces or tabs, which will be
 ignored.
 
 To include a literal `$` in the document, use `$$`.
-To include a literal `{{`, use `{{{{`.
 
-Anything between the sequence `$--` or `{{--` and the end of the
+Anything between the sequence `$--` and the end of the
 line will be treated as a comment and omitted from the output.
 
 A slot for an interpolated variable is a variable name surrounded
@@ -61,10 +60,10 @@ $foo$
 $foo.bar.baz$
 $foo_bar.baz-bim$
 $ foo $
-{{foo}}
-{{foo.bar.baz}}
-{{foo_bar.baz-bim}}
-{{ foo }}
+${foo}
+${foo.bar.baz}
+${foo_bar.baz-bim}
+${ foo }
 ```
 
 The values of variables are determined by a JSON object that is
@@ -96,17 +95,17 @@ $else$
 part two
 $endif$
 
-{{if(foo)}}bar{{endif}}
+${if(foo)}bar${endif}
 
-{{if(foo)}}
-  {{foo}}
-{{endif}}
+${if(foo)}
+  ${foo}
+${endif}
 
-{{if(foo)}}
-{{ foo.bar }}
-{{else}}
+${if(foo)}
+${ foo.bar }
+${else}
 no foo!
-{{endif}}
+${endif}
 ```
 
 Conditional keywords should not be indented, or unexpected spacing
@@ -133,10 +132,10 @@ $for(foo)$
   - $foo.last$, $foo.first$
 $endfor$
 
-{{ for(foo) }}{{ foo }}{{ sep }}, {{ endfor }}
+${ for(foo) }${ foo }${ sep }, ${ endfor }
 
-{{ for(foo) }}
-  - {{ foo.last }}, {{ foo.first }}
-{{ endfor }}
+${ for(foo) }
+  - ${ foo.last }, ${ foo.first }
+${ endfor }
 ```
 
