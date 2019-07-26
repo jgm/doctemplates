@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -173,11 +174,17 @@ import Data.Monoid -- needed for older base
 newtype Template = Template { unTemplate :: [TemplatePart] }
      deriving (Show, Read, Data, Typeable, Generic)
 
+#if MIN_VERSION_base(4,11,0)
 instance Semigroup Template where
   Template xs <> Template ys = Template (xs <> ys)
 
 instance Monoid Template where
   mempty = Template []
+#else
+instance Monoid Template where
+  Template xs <> Template ys = Template (xs <> ys)
+  mempty = Template []
+#endif
 
 data TemplatePart =
        Interpolate Variable
@@ -189,11 +196,17 @@ data TemplatePart =
 newtype Variable = Variable { unVariable :: [Text] }
   deriving (Show, Read, Data, Typeable, Generic)
 
+#if MIN_VERSION_base(4,11,0)
 instance Semigroup Variable where
   Variable xs <> Variable ys = Variable (xs <> ys)
 
 instance Monoid Variable where
   mempty = Variable []
+#else
+instance Monoid Variable where
+  Variable xs <> Variable ys = Variable (xs <> ys)
+  mempty = Variable []
+#endif
 
 renderTemplate :: ToJSON a => Template -> a -> Text
 renderTemplate t context = evalState (renderer t (toJSON context)) 0
