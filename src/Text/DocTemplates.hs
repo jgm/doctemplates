@@ -168,6 +168,7 @@ import Data.Foldable (toList)
 import Data.Vector ((!?))
 import Data.Scientific (floatingOrInteger)
 import Data.Semigroup (Semigroup)
+import Data.Monoid -- needed for older base
 
 newtype Template = Template { unTemplate :: [TemplatePart] }
      deriving (Show, Read, Data, Typeable, Generic)
