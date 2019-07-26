@@ -169,10 +169,9 @@ import Data.Foldable (toList)
 import Data.Vector ((!?))
 import Data.Scientific (floatingOrInteger)
 import Data.Semigroup (Semigroup)
-import Data.Monoid -- needed for older base
 
 newtype Template = Template { unTemplate :: [TemplatePart] }
-     deriving (Show, Read, Data, Typeable, Generic)
+     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
 #if MIN_VERSION_base(4,11,0)
 instance Semigroup Template where
@@ -191,10 +190,10 @@ data TemplatePart =
      | Conditional Variable Template Template
      | Iterate Variable Template Template
      | Literal Text
-     deriving (Show, Read, Data, Typeable, Generic)
+     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
 newtype Variable = Variable { unVariable :: [Text] }
-  deriving (Show, Read, Data, Typeable, Generic)
+  deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
 #if MIN_VERSION_base(4,11,0)
 instance Semigroup Variable where
