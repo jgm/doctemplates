@@ -1,5 +1,10 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances,
-    OverloadedStrings, GeneralizedNewtypeDeriving, ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 {- |
    Module      : Text.Pandoc.Templates
    Copyright   : Copyright (C) 2009-2016 John MacFarlane
@@ -138,19 +143,23 @@ Examples:
 -}
 
 module Text.DocTemplates ( renderTemplate
-                         , applyTemplate
                          , compileTemplate
-                         , Template
+                         , applyTemplate
+                         , Template(..)
+                         , TemplatePart(..)
+                         , Variable(..)
                          ) where
 
 import Data.Char (isAlphaNum)
 import Control.Monad (guard, when)
-import Data.Aeson (ToJSON(..), Value(..))
+import Data.Aeson (Value(..))
 import qualified Text.Parsec as P
 import Text.Parsec.Text (Parser)
-import Data.Monoid
 import Control.Applicative
 import qualified Data.Text as T
+import Data.Data (Data)
+import Data.Typeable (Typeable)
+import GHC.Generics (Generic)
 import Data.Text (Text)
 import Data.List (intersperse)
 import qualified Data.HashMap.Strict as H
@@ -159,38 +168,197 @@ import Data.Vector ((!?))
 import Data.Scientific (floatingOrInteger)
 import Data.Semigroup (Semigroup)
 
--- | A 'Template' is essentially a function that takes
--- a JSON 'Value' and produces 'Text'.
-newtype Template = Template { unTemplate :: Value -> Text }
-                 deriving (Semigroup, Monoid)
+newtype Template = Template { unTemplate :: [TemplatePart] }
+     deriving (Show, Read, Data, Typeable, Generic)
 
-type Variable = [Text]
+instance Semigroup Template where
+  Template xs <> Template ys = Template (xs <> ys)
 
--- | Compile a template.
+instance Monoid Template where
+  mempty = Template []
+
+data TemplatePart =
+       Interpolate Variable
+     | Conditional Variable Template Template
+     | Iterate Variable Template Template
+     | Literal Text
+     deriving (Show, Read, Data, Typeable, Generic)
+
+newtype Variable = Variable { unVariable :: [Text] }
+  deriving (Show, Read, Data, Typeable, Generic)
+
+instance Semigroup Variable where
+  Variable xs <> Variable ys = Variable (xs <> ys)
+
+instance Monoid Variable where
+  mempty = Variable []
+
+renderTemplate :: Template -> Value -> Text
+renderTemplate (Template []) _ = mempty
+renderTemplate (Template (x:xs)) val = thisPart <> rest
+  where
+   rest = renderTemplate (Template xs) val
+   thisPart =
+     case x of
+       Literal t -> t
+       Interpolate v -> resolveVar v val
+       Conditional v ift elset -> renderTemplate branch val
+         where branch = case resolveVar v val of
+                          "" -> elset
+                          _  -> ift
+       Iterate v t sep ->
+         case multiLookup (unVariable v) val of
+           Just (Array vec) ->
+             mconcat $ intersperse sep' iters
+             where sep' = renderTemplate sep val
+                   iters = map (renderTemplate t)
+                           (map (\newv -> replaceVar v newv val) (toList vec))
+           _ -> case resolveVar v val of
+                  "" -> mempty
+                  _  -> renderTemplate t val
+
+
 compileTemplate :: Text -> Either String Template
 compileTemplate template =
   case P.parse (pTemplate <* P.eof) "template" template of
        Left e   -> Left (show e)
        Right x  -> Right x
 
--- | Render a compiled template using @context@ to resolve variables.
-renderTemplate :: ToJSON a => Template -> a -> Text
-renderTemplate (Template f) context = f $ toJSON context
-
--- | Combines `renderTemplate` and `compileTemplate`.
-applyTemplate :: ToJSON a => Text -> a -> Either String Text
-applyTemplate t context =
+applyTemplate :: Text -> Value -> Either String Text
+applyTemplate t val =
   case compileTemplate t of
-         Left e   -> Left e
-         Right f  -> Right $ renderTemplate f context
+    Left e   -> Left e
+    Right ct -> Right $ renderTemplate ct val
 
-var :: Variable -> Template
-var = Template . resolveVar
+
+pTemplate :: Parser Template
+pTemplate = do
+  ts <- many (P.skipMany pComment *> (pLit <|> pDirective <|> pEscape))
+  P.skipMany pComment
+  return $ Template ts
+
+pLit :: Parser TemplatePart
+pLit = Literal . mconcat <$>
+  P.many1 (
+     (T.pack <$> P.many1 (P.satisfy (\c -> c /= '$' && c /= '{')))
+     <|>
+     ("{" <$ P.try (P.char '{' >> P.notFollowedBy (P.char '{')))
+     )
+
+backupSourcePos :: Int -> Parser ()
+backupSourcePos n = do
+  pos <- P.getPosition
+  P.setPosition $ P.incSourceColumn pos (- n)
+
+pEscape :: Parser TemplatePart
+pEscape = do
+  (Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1))
+  <|>
+  (Literal "{{" <$ P.try (P.string "{{{{" <* backupSourcePos 2))
+
+pDirective :: Parser TemplatePart
+pDirective = pConditional <|> pForLoop <|> pInterpolate
+
+pEnclosed :: Parser a -> Parser a
+pEnclosed parser = P.try $ do
+  closer <- pOpen
+  P.skipMany pSpaceOrTab
+  result <- parser
+  P.skipMany pSpaceOrTab
+  closer
+  return result
+
+pParens :: Parser a -> Parser a
+pParens parser = do
+  P.char '('
+  result <- parser
+  P.char ')'
+  return result
+
+pConditional :: Parser TemplatePart
+pConditional = do
+  v <- pEnclosed $ P.try (P.string "if") *> pParens pVar
+  -- if newline after the "if", then a newline after "endif" will be swallowed
+  multiline <- P.option False (True <$ skipEndline)
+  ifContents <- pTemplate
+  elseContents <- P.option mempty $
+                    do pEnclosed (P.string "else")
+                       when multiline $ P.option () skipEndline
+                       pTemplate
+  pEnclosed (P.string "endif")
+  when multiline $ P.option () skipEndline
+  return $ Conditional v ifContents elseContents
+
+skipEndline :: Parser ()
+skipEndline = P.try $ P.skipMany pSpaceOrTab <* P.char '\n'
+
+pForLoop :: Parser TemplatePart
+pForLoop = do
+  v <- pEnclosed $ P.try (P.string "for") *> pParens pVar
+  -- if newline after the "for", then a newline after "endfor" will be swallowed
+  multiline <- P.option False $ skipEndline >> return True
+  contents <- pTemplate
+  sep <- P.option mempty $
+           do pEnclosed (P.string "sep")
+              when multiline $ P.option () skipEndline
+              pTemplate
+  pEnclosed (P.string "endfor")
+  when multiline $ P.option () skipEndline
+  return $ Iterate v contents sep
+
+pInterpolate :: Parser TemplatePart
+pInterpolate = Interpolate <$> pEnclosed pVar
+
+pSpaceOrTab :: Parser Char
+pSpaceOrTab = P.satisfy (\c -> c == ' ' || c == '\t')
+
+pComment :: Parser ()
+pComment = do
+  pos <- P.getPosition
+  P.try (pOpen >> P.string "--")
+  P.skipMany (P.satisfy (/='\n'))
+  -- If the comment begins in the first column, the line ending
+  -- will be consumed; otherwise not.
+  when (P.sourceColumn pos == 1) $ () <$ P.char '\n'
+  return ()
+
+pOpenDollar :: Parser (Parser ())
+pOpenDollar =
+  pCloseDollar <$ P.try (P.char '$' <* P.notFollowedBy (P.char '$'))
+  where
+   pCloseDollar = () <$ P.char '$'
+
+pOpenBraces :: Parser (Parser ())
+pOpenBraces =
+  pCloseBraces <$ P.try (P.string "{{" <* P.notFollowedBy (P.string "{{"))
+  where
+   pCloseBraces = () <$ P.try (P.string "}}")
+
+pOpen :: Parser (Parser ())
+pOpen = pOpenDollar <|> pOpenBraces
+
+pVar :: Parser Variable
+pVar = do
+  first <- pIdentPart
+  rest <- many (P.char '.' *> pIdentPart)
+  return $ Variable (first:rest)
+
+pIdentPart :: Parser Text
+pIdentPart = P.try $ do
+  first <- P.letter
+  rest <- T.pack <$>
+            P.many (P.satisfy (\c -> isAlphaNum c || c == '_' || c == '-'))
+  let part = T.singleton first <> rest
+  guard $ part `notElem` reservedWords
+  return part
+
+reservedWords :: [Text]
+reservedWords = ["else","endif","for","endfor","sep"]
 
 resolveVar :: Variable -> Value -> Text
-resolveVar var' val =
+resolveVar (Variable var') val =
   case multiLookup var' val of
-       Just (Array vec) -> maybe mempty (resolveVar []) $ vec !? 0
+       Just (Array vec) -> maybe mempty (resolveVar mempty) $ vec !? 0
        Just (String t)  -> T.stripEnd t
        Just (Number n)  -> case floatingOrInteger n of
                                    Left (r :: Double)   -> T.pack $ show r
@@ -205,162 +373,16 @@ multiLookup [] x = Just x
 multiLookup (v:vs) (Object o) = H.lookup v o >>= multiLookup vs
 multiLookup _ _ = Nothing
 
-lit :: Text -> Template
-lit = Template . const
-
-cond :: Variable -> Template -> Template -> Template
-cond var' (Template ifyes) (Template ifno) = Template $ \val ->
-  case resolveVar var' val of
-       "" -> ifno val
-       _  -> ifyes val
-
-iter :: Variable -> Template -> Template -> Template
-iter var' template sep = Template $ \val -> unTemplate
-  (case multiLookup var' val of
-           Just (Array vec) -> mconcat $ intersperse sep
-                                       $ map (setVar template var')
-                                       $ toList vec
-           Just x           -> cond var' (setVar template var' x) mempty
-           Nothing          -> mempty) val
-
-setVar :: Template -> Variable -> Value -> Template
-setVar (Template f) var' val = Template $ f . replaceVar var' val
-
-replaceVar :: Variable -> Value -> Value -> Value
-replaceVar []     new _          = new
-replaceVar (v:vs) new (Object o) =
-  Object $ H.adjust (replaceVar vs new) v o
+replaceVar :: Variable -- ^ Field
+           -> Value -- ^ New value
+           -> Value -- ^ Old object
+           -> Value -- ^ New object
+replaceVar (Variable [])     new _          = new
+replaceVar (Variable (v:vs)) new (Object o) =
+  Object $ H.adjust (replaceVar (Variable vs) new) v o
 replaceVar _ _ old = old
 
---- parsing
+-- indent :: Int -> Text -> Text
+-- indent 0   = id
+-- indent ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
 
-pOpenDollar :: Parser (Parser ())
-pOpenDollar = pCloseDollar <$ P.char '$'
-  where pCloseDollar = () <$ P.char '$'
-
-pOpenBraces :: Parser (Parser ())
-pOpenBraces = pCloseBraces <$ P.try (P.string "{{")
-  where pCloseBraces = () <$ P.try (P.string "}}")
-
-pOpen :: Parser (Parser ())
-pOpen = pOpenDollar <|> pOpenBraces
-
-pEnclosed :: Parser a -> Parser a
-pEnclosed parser =
-  P.try $ do
-    closer <- pOpen
-    P.skipMany pSpaceOrTab
-    res <- parser
-    P.skipMany pSpaceOrTab
-    closer
-    return $ res
-
-pEscaped :: Parser Template
-pEscaped = (lit "$" <$ P.try (pOpenDollar >> pOpenDollar))
-       <|> (lit "{{" <$ P.try (pOpenBraces >> pOpenBraces))
-
-pTemplate :: Parser Template
-pTemplate = do
-  sp <- P.option mempty pInitialSpace
-  rest <- mconcat <$> many (pConditional <|>
-                            pFor <|>
-                            pNewline <|>
-                            pVar <|>
-                            pComment <|>
-                            pLit <|>
-                            pEscaped)
-  return $ sp <> rest
-
-pLit :: Parser Template
-pLit = lit . T.pack <$>
-  P.many1 (
-     P.satisfy (\c -> c /= '\n' && c /= '$' && c /= '{')
-     <|>
-     (P.notFollowedBy (P.string "$" <|> P.try (P.string "{{"))
-       >> P.satisfy (/= '\n'))
-     )
-
-pNewline :: Parser Template
-pNewline = do
-  P.char '\n'
-  sp <- P.option mempty pInitialSpace
-  return $ lit "\n" <> sp
-
-pInitialSpace :: Parser Template
-pInitialSpace = do
-  sps <- T.pack <$> P.many1 (P.satisfy (==' '))
-  let indentVar = if T.null sps
-                     then id
-                     else indent (T.length sps)
-  v <- P.option mempty $ indentVar <$> pVar
-  return $ lit sps <> v
-
-pComment :: Parser Template
-pComment = do
-  pos <- P.getPosition
-  P.try (pOpen >> P.string "--")
-  P.skipMany (P.satisfy (/='\n'))
-  -- If the comment begins in the first column, the line ending
-  -- will be consumed; otherwise not.
-  when (P.sourceColumn pos == 1) $ () <$ P.char '\n'
-  return mempty
-
-pVar :: Parser Template
-pVar = var <$> pEnclosed pIdent
-
-pIdent :: Parser [Text]
-pIdent = do
-  first <- pIdentPart
-  rest <- many (P.char '.' *> pIdentPart)
-  return (first:rest)
-
-pIdentPart :: Parser Text
-pIdentPart = P.try $ do
-  first <- P.letter
-  rest <- T.pack <$> P.many (P.satisfy (\c -> isAlphaNum c || c == '_' || c == '-'))
-  let id' = T.singleton first <> rest
-  guard $ id' `notElem` reservedWords
-  return id'
-
-reservedWords :: [Text]
-reservedWords = ["else","endif","for","endfor","sep"]
-
-pSpaceOrTab :: Parser Char
-pSpaceOrTab = P.satisfy (\c -> c == ' ' || c == '\t')
-
-skipEndline :: Parser ()
-skipEndline = P.try $ P.skipMany pSpaceOrTab >> P.char '\n' >> return ()
-
-pConditional :: Parser Template
-pConditional = do
-  id' <- pEnclosed $ P.string "if(" *> pIdent <* P.string ")"
-  -- if newline after the "if", then a newline after "endif" will be swallowed
-  multiline <- P.option False (True <$ skipEndline)
-  ifContents <- pTemplate
-  elseContents <- P.option mempty $ P.try $
-                      do pEnclosed (P.string "else")
-                         when multiline $ P.option () skipEndline
-                         pTemplate
-  pEnclosed (P.string "endif")
-  when multiline $ P.option () skipEndline
-  return $ cond id' ifContents elseContents
-
-pFor :: Parser Template
-pFor = do
-  id' <- pEnclosed $ P.string "for(" *> pIdent <* P.string ")"
-  -- if newline after the "for", then a newline after "endfor" will be swallowed
-  multiline <- P.option False $ skipEndline >> return True
-  contents <- pTemplate
-  sep <- P.option mempty $
-           do pEnclosed (P.string "sep")
-              when multiline $ P.option () skipEndline
-              pTemplate
-  pEnclosed (P.string "endfor")
-  when multiline $ P.option () skipEndline
-  return $ iter id' contents sep
-
-indent :: Int -> Template -> Template
-indent 0   x            = x
-indent ind (Template f) = Template $ \val -> indent' (f val)
-  where indent' t = T.concat
-                    $ intersperse ("\n" <> T.replicate ind " ") $ T.lines t
