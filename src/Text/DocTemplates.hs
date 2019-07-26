@@ -182,7 +182,7 @@ instance Monoid Template where
   mempty = Template []
 #else
 instance Monoid Template where
-  Template xs <> Template ys = Template (xs <> ys)
+  mappend (Template xs) (Template ys) = Template (mappend xs ys)
   mempty = Template []
 #endif
 
@@ -204,7 +204,7 @@ instance Monoid Variable where
   mempty = Variable []
 #else
 instance Monoid Variable where
-  Variable xs <> Variable ys = Variable (xs <> ys)
+  mappend (Variable xs) (Variable ys) = Variable (mappend xs ys)
   mempty = Variable []
 #endif
 
