@@ -32,6 +32,8 @@ import Data.Char (isAlphaNum)
 import Control.Monad (guard, when)
 import Data.Aeson (Value(..), ToJSON(..))
 import qualified Text.Parsec as P
+import Control.Exception
+import System.IO.Error (isDoesNotExistError)
 import Control.Monad.State
 import Control.Monad.Identity
 import Control.Applicative
@@ -47,7 +49,7 @@ import Data.Foldable (toList)
 import Data.Vector ((!?))
 import Data.Scientific (floatingOrInteger)
 import Data.Semigroup (Semigroup)
-import System.FilePath ()
+import System.FilePath
 
 newtype Template = Template { unTemplate :: [TemplatePart] }
      deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
@@ -132,7 +134,16 @@ instance TemplateMonad Identity where
   getPartial s  = fail $ "Could not get partial: " <> s
 
 instance TemplateMonad IO where
-  getPartial s  = liftIO (TIO.readFile s)
+  getPartial s  = do
+    searchPaths <- P.getState
+    let tryFiles [] = fail $ "Could not get partial: " <> s
+        tryFiles (f:fs) = do
+          res <- liftIO $
+                   tryJust (guard . isDoesNotExistError) (TIO.readFile f)
+          case res of
+            Left _  -> tryFiles fs
+            Right x -> return x
+    tryFiles $ map (</> s) searchPaths
 
 compileTemplate :: TemplateMonad m
                 => [FilePath] -> Text -> m (Either String Template)
