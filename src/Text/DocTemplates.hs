@@ -359,11 +359,14 @@ pOpen = pOpenDollar <|> pOpenBraces
 
 pVar :: Parser Variable
 pVar = do
-  first <- pIdentPart <|> return ""
-  rest <- if T.null first
-             then P.many1 (P.char '.' *> pIdentPart)
-             else P.many  (P.char '.' *> pIdentPart)
-  return $ Variable (first:rest)
+  initialDot <- P.option False $ True <$ P.char '.'
+  if initialDot
+     then do
+       parts <- pIdentPart `P.sepBy` (P.char '.')
+       return $ Variable ("":parts)
+     else do
+       parts <- pIdentPart `P.sepBy1` (P.char '.')
+       return $ Variable parts
 
 pIdentPart :: Parser Text
 pIdentPart = P.try $ do
