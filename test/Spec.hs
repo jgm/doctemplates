@@ -18,6 +18,15 @@ employees = [ Employee "John" "Doe" Nothing
             , Employee "Omar" "Smith" (Just 30000)
             , Employee "Sara" "Chen" (Just 60000) ]
 
+data Worksite = Worksite { location  :: String
+                         , workers   :: [Employee] }
+instance ToJSON Worksite where
+  toJSON e = object [ "location" .= location e
+                    , "workers"  .= workers e ]
+
+worksite :: Worksite
+worksite = Worksite "canyon" employees
+
 template :: Text
 template =
   "$for(employee)$Hi, $employee.name.first$. $if(employee.salary)$You make $$$employee.salary$.$else$No salary data.$endif$$sep$\n$endfor$"
@@ -29,6 +38,10 @@ template2 =
 template3 :: Text
 template3 =
   "${ for(employee) }Hi, ${ it.name.first }. ${ if(it.salary) }You make $$${ it.salary }.${ else }No salary data.${ endif }${ sep }\n${ endfor }"
+
+template4 :: Text
+template4 =
+  "${ for(worksite.workers) }\n${it.name.last}, ${it.name.first}\n${ endfor }"
 
 main :: IO ()
 main = hspec $ do
@@ -47,6 +60,11 @@ main = hspec $ do
       applyTemplate template3 (object ["employee" .= employees])
         `shouldBe`
         (Right "Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Either String Text)
+
+    it "handles for loops within object fields" $ do
+      applyTemplate template4 (object ["worksite" .= worksite])
+        `shouldBe`
+        (Right "Doe, John\nSmith, Omar\nChen, Sara\n" :: Either String Text)
 
     it "renders numbers appropriately as integer or floating" $ do
       applyTemplate "$m$ and $n$"

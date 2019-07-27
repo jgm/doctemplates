@@ -236,7 +236,10 @@ pOpen :: Parser (Parser ())
 pOpen = pOpenDollar <|> pOpenBraces
 
 pVar :: Parser Variable
-pVar = Variable <$> pIdentPart `P.sepBy1` (P.char '.')
+pVar = do
+  first <- pIdentPart <|> "it" <$ (P.try (P.string "it"))
+  rest <- P.many $ P.char '.' *> pIdentPart
+  return $ Variable (first:rest)
 
 pIdentPart :: Parser Text
 pIdentPart = P.try $ do
@@ -248,7 +251,7 @@ pIdentPart = P.try $ do
   return part
 
 reservedWords :: [Text]
-reservedWords = ["else","endif","for","endfor","sep"]
+reservedWords = ["else","endif","for","endfor","sep","it"]
 
 resolveVar :: Variable -> Value -> Text
 resolveVar (Variable var') val =

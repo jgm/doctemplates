@@ -52,7 +52,7 @@ line will be treated as a comment and omitted from the output.
 A slot for an interpolated variable is a variable name surrounded
 by matched delimiters.  Variable names must begin with a letter
 and can contain letters, numbers, `_`, `-`, and `.`.  The
-keywords `if`, `else`, `endif`, `for`, `sep`, and `endfor` may
+keywords `it`, `if`, `else`, `endif`, `for`, `sep`, and `endfor` may
 not be used as variable names. Examples:
 
 ```
@@ -119,10 +119,6 @@ to each value of the array in turn.  If the value of the
 associated variable is not an array, a single iteration will be
 performed on its value.
 
-You may optionally specify a separator between consecutive
-values using `sep` (enclosed in matched delimiters).  The
-material between `sep` and the `endfor` is the separator.
-
 Examples:
 
 ```
@@ -132,10 +128,25 @@ $for(foo)$
   - $foo.last$, $foo.first$
 $endfor$
 
-${ for(foo) }${ foo }${ sep }, ${ endfor }
+${ for(foo.bar) }
+  - ${ foo.bar.last }, ${ foo.bar.first }
+${ endfor }
+```
 
-${ for(foo) }
-  - ${ foo.last }, ${ foo.first }
+You may optionally specify a separator between consecutive
+values using `sep` (enclosed in matched delimiters).  The
+material between `sep` and the `endfor` is the separator.
+
+```
+${ for(foo) }${ foo }${ sep }, ${ endfor }
+```
+
+Instead of using `variable` inside the loop, the special
+anaphoric keyword `it` may be used.
+
+```
+${ for(foo.bar) }
+  - ${ it.last }, ${ it.first }
 ${ endfor }
 ```
 
