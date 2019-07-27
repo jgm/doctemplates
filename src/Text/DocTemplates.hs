@@ -359,8 +359,10 @@ pOpen = pOpenDollar <|> pOpenBraces
 
 pVar :: Parser Variable
 pVar = do
-  first <- pIdentPart
-  rest <- many (P.char '.' *> pIdentPart)
+  first <- pIdentPart <|> return ""
+  rest <- if T.null first
+             then P.many1 (P.char '.' *> pIdentPart)
+             else P.many  (P.char '.' *> pIdentPart)
   return $ Variable (first:rest)
 
 pIdentPart :: Parser Text
