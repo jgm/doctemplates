@@ -48,7 +48,7 @@ import qualified Data.HashMap.Strict as H
 import Data.Foldable (toList)
 import Data.Vector ((!?))
 import Data.Scientific (floatingOrInteger)
-import Data.Semigroup (Semigroup)
+import Data.Semigroup (Semigroup, (<>))
 import System.FilePath
 
 newtype Template = Template { unTemplate :: [TemplatePart] }
