@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -32,6 +33,8 @@ import Data.Char (isAlphaNum)
 import Control.Monad (guard, when)
 import Data.Aeson (Value(..), ToJSON(..))
 import qualified Text.Parsec as P
+import qualified Text.Parsec.Pos as P
+import Control.Monad.Except
 import Control.Exception
 import System.IO.Error (isDoesNotExistError)
 import Control.Monad.State
@@ -137,7 +140,7 @@ instance TemplateMonad Identity where
 
 instance TemplateMonad IO where
   getPartial s  = do
-    searchPaths <- P.getState
+    st <- P.getState
     let tryFiles [] = fail $ "Could not get partial: " <> s
         tryFiles (f:fs) = do
           res <- liftIO $
@@ -145,12 +148,14 @@ instance TemplateMonad IO where
           case res of
             Left _  -> tryFiles fs
             Right x -> return x
-    tryFiles $ map (</> s) searchPaths
+    tryFiles $ map (</> s) (searchPath st)
 
 compileTemplate :: TemplateMonad m
                 => [FilePath] -> Text -> m (Either String Template)
 compileTemplate templatePaths template = do
-  res <- P.runParserT (pTemplate <* P.eof) templatePaths "template" template
+  res <- P.runParserT (pTemplate <* P.eof)
+           PState{ searchPath     = templatePaths
+                 , partialNesting = 1 } "template" template
   case res of
        Left e   -> return $ Left $ show e
        Right x  -> return $ Right x
@@ -160,7 +165,11 @@ applyTemplate :: (TemplateMonad m, ToJSON a)
 applyTemplate fps t val =
   fmap (flip renderTemplate val) <$> compileTemplate fps t
 
-type Parser = P.ParsecT Text [FilePath]
+data PState =
+  PState { searchPath     :: [FilePath]
+         , partialNesting :: Int }
+
+type Parser = P.ParsecT Text PState
 
 pTemplate :: TemplateMonad m => Parser m Template
 pTemplate = do
@@ -201,7 +210,7 @@ pParens parser = do
 
 pConditional :: TemplateMonad m => Parser m TemplatePart
 pConditional = do
-  v <- pEnclosed $ P.try (P.string "if") *> pParens pVar
+  v <- pEnclosed $ P.try $ P.string "if" *> pParens pVar
   -- if newline after the "if", then a newline after "endif" will be swallowed
   multiline <- P.option False (True <$ skipEndline)
   ifContents <- pTemplate
@@ -218,7 +227,7 @@ skipEndline = P.try $ P.skipMany pSpaceOrTab <* P.char '\n'
 
 pForLoop :: TemplateMonad m => Parser m TemplatePart
 pForLoop = do
-  v <- pEnclosed $ P.try (P.string "for") *> pParens pVar
+  v <- pEnclosed $ P.try $ P.string "for" *> pParens pVar
   -- if newline after the "for", then a newline after "endfor" will be swallowed
   multiline <- P.option False $ skipEndline >> return True
   contents <- pTemplate
@@ -232,7 +241,7 @@ pForLoop = do
 
 pInterpolate :: TemplateMonad m => Parser m TemplatePart
 pInterpolate = pEnclosed $ do
-  var <- pVar
+  var <- P.try $ pVar <* P.notFollowedBy (P.char '(')
   (P.char ':' *> pPartial (Just var)) <|> return (Interpolate var)
 
 pBarePartial :: TemplateMonad m => Parser m TemplatePart
@@ -243,14 +252,23 @@ pPartial mbvar = do
   fp <- P.many1 (P.alphaNum <|> P.oneOf ['_','-','.'])
   P.string "()"
   partial <- removeFinalNewline <$> getPartial fp
-  searchPath <- P.getState
-  res <- lift $ compileTemplate searchPath partial
-  case res of
-    Left e   -> fail $ "Could not compile partial: " <> fp <>
-                     "\n" <> show e
-    Right t  -> case mbvar of
-                  Just var -> return $ Iterate var t mempty
-                  Nothing  -> return $ Partial t
+  nesting <- partialNesting <$> P.getState
+  t <- if nesting > 50
+          then return $ Template [Literal "(loop)"]
+          else do
+            oldInput <- P.getInput
+            oldPos <- P.getPosition
+            P.setPosition $ P.initialPos fp
+            P.setInput partial
+            P.updateState $ \st -> st{ partialNesting = nesting + 1 }
+            res <- pTemplate <* P.eof
+            P.updateState $ \st -> st{ partialNesting = nesting }
+            P.setInput oldInput
+            P.setPosition oldPos
+            return res
+  case mbvar of
+    Just var -> return $ Iterate var t mempty
+    Nothing  -> return $ Partial t
 
 removeFinalNewline :: Text -> Text
 removeFinalNewline t =

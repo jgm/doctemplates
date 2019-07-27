@@ -179,6 +179,7 @@ ${ endfor }
 
 Final newlines are omitted from included partials.
 
-Partials may include other partials.  Currently there is
-no protection against infinite loops, so avoid them!
+Partials may include other partials.  If you exceed
+a nesting level of 50, though, in resolving partials,
+the literal `(loop)` will be returned, to avoid infinite loops.
 
