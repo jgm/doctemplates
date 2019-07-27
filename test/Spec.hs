@@ -26,6 +26,10 @@ template2 :: Text
 template2 =
   "$--\n${ for(employee) }Hi, ${ employee.name.first }. ${ if(employee.salary) }You make $$${ employee.salary }.${ else }No salary data.${ endif }${ sep }\n${ endfor }"
 
+template3 :: Text
+template3 =
+  "${ for(employee) }Hi, ${ .name.first }. ${ if(.salary) }You make $$${ .salary }.${ else }No salary data.${ endif }${ sep }\n${ endfor }"
+
 main :: IO ()
 main = hspec $ do
   describe "applyTemplate" $ do
@@ -33,20 +37,29 @@ main = hspec $ do
       applyTemplate template (object ["employee" .= employees])
         `shouldBe`
         (Right "Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Either String Text)
+
     it "works with ${} delimiters" $ do
       applyTemplate template2 (object ["employee" .= employees])
         `shouldBe`
         (Right "Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Either String Text)
+
+    it "works with variables starting with ." $ do
+      applyTemplate template3 (object ["employee" .= employees])
+        `shouldBe`
+        (Right "Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Either String Text)
+
     it "renders numbers appropriately as integer or floating" $ do
       applyTemplate "$m$ and $n$"
         (object ["m" .= (5 :: Integer), "n" .= (7.3 :: Double)])
         `shouldBe`
         (Right "5 and 7.3" :: Either String Text)
+
     it "handles comments" $ do
       applyTemplate "hello $--there and $m$\n$-- comment\nbar"
         (object ["m" .= (5 :: Integer)])
         `shouldBe`
         (Right "hello \nbar" :: Either String Text)
+
     it "fails with an incorrect template" $ do
       applyTemplate "$if(x$and$endif$" (object [])
         `shouldBe`

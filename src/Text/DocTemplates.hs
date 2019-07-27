@@ -237,8 +237,10 @@ renderer (Template xs) val = mconcat <$> mapM renderPart xs
          case multiLookup (unVariable v) val of
            Just (Array vec) -> do
              sep' <- renderer sep val
-             iters <- mapM (renderer t)
-                         (map (\newv -> replaceVar v newv val) (toList vec))
+             iters <- mapM (\iterval -> renderer t .
+                                replaceVar v iterval .
+                                replaceVar (Variable [""]) iterval $
+                                val) (toList vec)
              return $ mconcat $ intersperse sep' iters
            _ -> case resolveVar v val of
                   "" -> return mempty
@@ -403,8 +405,9 @@ replaceVar :: Variable -- ^ Field
            -> Value -- ^ Old object
            -> Value -- ^ New object
 replaceVar (Variable [])     new _          = new
-replaceVar (Variable (v:vs)) new (Object o) =
-  Object $ H.adjust (replaceVar (Variable vs) new) v o
+replaceVar (Variable (v:vs)) new (Object o) = Object $ H.alter f v o
+    where f Nothing  = Just new
+          f (Just x) = Just (replaceVar (Variable vs) new x)
 replaceVar _ _ old = old
 
 indent :: Int -> Text -> Text
