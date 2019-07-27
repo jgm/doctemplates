@@ -28,7 +28,7 @@ template2 =
 
 template3 :: Text
 template3 =
-  "${ for(employee) }Hi, ${ .name.first }. ${ if(.salary) }You make $$${ .salary }.${ else }No salary data.${ endif }${ sep }\n${ endfor }"
+  "${ for(employee) }Hi, ${ it.name.first }. ${ if(it.salary) }You make $$${ it.salary }.${ else }No salary data.${ endif }${ sep }\n${ endfor }"
 
 main :: IO ()
 main = hspec $ do
@@ -43,7 +43,7 @@ main = hspec $ do
         `shouldBe`
         (Right "Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Either String Text)
 
-    it "works with variables starting with ." $ do
+    it "works with variables starting with it." $ do
       applyTemplate template3 (object ["employee" .= employees])
         `shouldBe`
         (Right "Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Either String Text)

@@ -239,7 +239,7 @@ renderer (Template xs) val = mconcat <$> mapM renderPart xs
              sep' <- renderer sep val
              iters <- mapM (\iterval -> renderer t .
                                 replaceVar v iterval .
-                                replaceVar (Variable [""]) iterval $
+                                replaceVar (Variable ["it"]) iterval $
                                 val) (toList vec)
              return $ mconcat $ intersperse sep' iters
            _ -> case resolveVar v val of
@@ -360,15 +360,7 @@ pOpen :: Parser (Parser ())
 pOpen = pOpenDollar <|> pOpenBraces
 
 pVar :: Parser Variable
-pVar = do
-  initialDot <- P.option False $ True <$ P.char '.'
-  if initialDot
-     then do
-       parts <- pIdentPart `P.sepBy` (P.char '.')
-       return $ Variable ("":parts)
-     else do
-       parts <- pIdentPart `P.sepBy1` (P.char '.')
-       return $ Variable parts
+pVar = Variable <$> pIdentPart `P.sepBy1` (P.char '.')
 
 pIdentPart :: Parser Text
 pIdentPart = P.try $ do
