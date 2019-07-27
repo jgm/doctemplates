@@ -25,7 +25,9 @@ template :: Text
 template = "$for(employee)$Hi, $employee.name.first$. $if(employee.salary)$You make $employee.salary$.$else$No salary data.$endif$$sep$\n$endfor$"
 
 main :: IO ()
-main = case compileTemplate template of
+main = do
+  res <- compileTemplate ["partials"] template
+  case res of
          Left e    -> error e
          Right t   -> T.putStrLn $ renderTemplate t $ object
                         ["employee" .=
@@ -149,4 +151,34 @@ ${ for(foo.bar) }
   - ${ it.last }, ${ it.first }
 ${ endfor }
 ```
+
+Partials (subtemplates stored in different files) may be
+included using the syntax
+
+```
+${ boilerplate() }
+```
+
+Partials may optionally be applied to variables using
+a colon:
+
+```
+${ date:fancy() }
+
+${ articles:bibentry() }
+```
+
+If `articles` is an array, this will iterate over its
+values, applying the partial `bibentry()` to each one.
+So the second example above is equivalent to
+
+```
+${ for(articles) }
+${ it:bibentry() }
+${ endfor }
+
+Final newlines are omitted from included partials.
+
+Partials may include other partials.  Currently there is
+no protection against infinite loops, so avoid them!
 
