@@ -70,6 +70,7 @@ data TemplatePart =
        Interpolate Variable
      | Conditional Variable Template Template
      | Iterate Variable Template Template
+     | Partial Template
      | Literal Text
      deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
@@ -126,6 +127,7 @@ renderer (Template xs) val = mconcat <$> mapM renderPart xs
            _ -> case resolveVar v val of
                   "" -> return mempty
                   _  -> renderer t val
+       Partial t -> renderer t val
 
 class Monad m => TemplateMonad m where
   getPartial  :: FilePath -> Parser m Text
@@ -160,7 +162,7 @@ applyTemplate fps t val =
 
 type Parser = P.ParsecT Text [FilePath]
 
-pTemplate :: Monad m => Parser m Template
+pTemplate :: TemplateMonad m => Parser m Template
 pTemplate = do
   ts <- many (P.skipMany pComment *> (pLit <|> pDirective <|> pEscape))
   P.skipMany pComment
@@ -178,8 +180,8 @@ backupSourcePos n = do
 pEscape :: Monad m => Parser m TemplatePart
 pEscape = (Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1))
 
-pDirective :: Monad m => Parser m TemplatePart
-pDirective = pConditional <|> pForLoop <|> pInterpolate
+pDirective :: TemplateMonad m => Parser m TemplatePart
+pDirective = pConditional <|> pForLoop <|> pInterpolate <|> pBarePartial
 
 pEnclosed :: Monad m => Parser m a -> Parser m a
 pEnclosed parser = P.try $ do
@@ -197,7 +199,7 @@ pParens parser = do
   P.char ')'
   return result
 
-pConditional :: Monad m => Parser m TemplatePart
+pConditional :: TemplateMonad m => Parser m TemplatePart
 pConditional = do
   v <- pEnclosed $ P.try (P.string "if") *> pParens pVar
   -- if newline after the "if", then a newline after "endif" will be swallowed
@@ -214,7 +216,7 @@ pConditional = do
 skipEndline :: Monad m => Parser m ()
 skipEndline = P.try $ P.skipMany pSpaceOrTab <* P.char '\n'
 
-pForLoop :: Monad m => Parser m TemplatePart
+pForLoop :: TemplateMonad m => Parser m TemplatePart
 pForLoop = do
   v <- pEnclosed $ P.try (P.string "for") *> pParens pVar
   -- if newline after the "for", then a newline after "endfor" will be swallowed
@@ -228,8 +230,33 @@ pForLoop = do
   when multiline $ P.option () skipEndline
   return $ Iterate v contents sep
 
-pInterpolate :: Monad m => Parser m TemplatePart
-pInterpolate = Interpolate <$> pEnclosed pVar
+pInterpolate :: TemplateMonad m => Parser m TemplatePart
+pInterpolate = pEnclosed $ do
+  var <- pVar
+  (P.char ':' *> pPartial (Just var)) <|> return (Interpolate var)
+
+pBarePartial :: TemplateMonad m => Parser m TemplatePart
+pBarePartial = pEnclosed $ pPartial Nothing
+
+pPartial :: TemplateMonad m => Maybe Variable -> Parser m TemplatePart
+pPartial mbvar = do
+  fp <- P.many1 (P.alphaNum <|> P.oneOf ['_','-','.'])
+  P.string "()"
+  partial <- removeFinalNewline <$> getPartial fp
+  searchPath <- P.getState
+  res <- lift $ compileTemplate searchPath partial
+  case res of
+    Left e   -> fail $ "Could not compile partial: " <> fp <>
+                     "\n" <> show e
+    Right t  -> case mbvar of
+                  Just var -> return $ Iterate var t mempty
+                  Nothing  -> return $ Partial t
+
+removeFinalNewline :: Text -> Text
+removeFinalNewline t =
+  case T.unsnoc t of
+    Just (t', '\n') -> t'
+    _               -> t
 
 pSpaceOrTab :: Monad m => Parser m Char
 pSpaceOrTab = P.satisfy (\c -> c == ' ' || c == '\t')
