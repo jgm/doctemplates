@@ -33,8 +33,10 @@ import Control.Monad (guard, when)
 import Data.Aeson (Value(..), ToJSON(..))
 import qualified Text.Parsec as P
 import Control.Monad.State
+import Control.Monad.Identity
 import Control.Applicative
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
@@ -45,6 +47,7 @@ import Data.Foldable (toList)
 import Data.Vector ((!?))
 import Data.Scientific (floatingOrInteger)
 import Data.Semigroup (Semigroup)
+import System.FilePath ()
 
 newtype Template = Template { unTemplate :: [TemplatePart] }
      deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
@@ -123,25 +126,28 @@ renderer (Template xs) val = mconcat <$> mapM renderPart xs
                   _  -> renderer t val
 
 class Monad m => TemplateMonad m where
-  getPartial  :: String -> m Text
-  reportError :: String -> m a
+  getPartial  :: FilePath -> Parser m Text
 
-instance TemplateMonad (Either String) where
-  getPartial s = reportError $ "Could not get partial: " <> s
-  reportError s = Left s
+instance TemplateMonad Identity where
+  getPartial s  = fail $ "Could not get partial: " <> s
 
-compileTemplate :: TemplateMonad m => Text -> m Template
-compileTemplate template = do
-  res <- P.runParserT (pTemplate <* P.eof) () "template" template
+instance TemplateMonad IO where
+  getPartial s  = liftIO (TIO.readFile s)
+
+compileTemplate :: TemplateMonad m
+                => [FilePath] -> Text -> m (Either String Template)
+compileTemplate templatePaths template = do
+  res <- P.runParserT (pTemplate <* P.eof) templatePaths "template" template
   case res of
-       Left e   -> reportError (show e)
-       Right x  -> return x
+       Left e   -> return $ Left $ show e
+       Right x  -> return $ Right x
 
 applyTemplate :: (TemplateMonad m, ToJSON a)
-              => Text -> a -> m Text
-applyTemplate t val = (flip renderTemplate val) <$> compileTemplate t
+              => [FilePath] -> Text -> a -> m (Either String Text)
+applyTemplate fps t val =
+  fmap (flip renderTemplate val) <$> compileTemplate fps t
 
-type Parser = P.ParsecT Text ()
+type Parser = P.ParsecT Text [FilePath]
 
 pTemplate :: Monad m => Parser m Template
 pTemplate = do

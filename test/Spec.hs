@@ -4,6 +4,7 @@ import Text.DocTemplates
 import Test.Hspec
 import Data.Text
 import Data.Aeson
+import Control.Monad.Identity
 
 data Employee = Employee { firstName :: String
                          , lastName  :: String
@@ -43,43 +44,46 @@ template4 :: Text
 template4 =
   "${ for(worksite.workers) }\n${it.name.last}, ${it.name.first}\n${ endfor }"
 
+apply :: [FilePath] -> Text -> Value -> Either String Text
+apply fps t v = runIdentity $ applyTemplate fps t v
+
 main :: IO ()
 main = hspec $ do
   describe "applyTemplate" $ do
     it "works" $ do
-      applyTemplate template (object ["employee" .= employees])
+      apply [] template (object ["employee" .= employees])
         `shouldBe`
         (Right "Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Either String Text)
 
     it "works with ${} delimiters" $ do
-      applyTemplate template2 (object ["employee" .= employees])
+      apply [] template2 (object ["employee" .= employees])
         `shouldBe`
         (Right "Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Either String Text)
 
     it "works with variables starting with it." $ do
-      applyTemplate template3 (object ["employee" .= employees])
+      apply [] template3 (object ["employee" .= employees])
         `shouldBe`
         (Right "Hi, John. No salary data.\nHi, Omar. You make $30000.\nHi, Sara. You make $60000." :: Either String Text)
 
     it "handles for loops within object fields" $ do
-      applyTemplate template4 (object ["worksite" .= worksite])
+      apply [] template4 (object ["worksite" .= worksite])
         `shouldBe`
         (Right "Doe, John\nSmith, Omar\nChen, Sara\n" :: Either String Text)
 
     it "renders numbers appropriately as integer or floating" $ do
-      applyTemplate "$m$ and $n$"
+      apply [] "$m$ and $n$"
         (object ["m" .= (5 :: Integer), "n" .= (7.3 :: Double)])
         `shouldBe`
         (Right "5 and 7.3" :: Either String Text)
 
     it "handles comments" $ do
-      applyTemplate "hello $--there and $m$\n$-- comment\nbar"
+      apply [] "hello $--there and $m$\n$-- comment\nbar"
         (object ["m" .= (5 :: Integer)])
         `shouldBe`
         (Right "hello \nbar" :: Either String Text)
 
     it "fails with an incorrect template" $ do
-      applyTemplate "$if(x$and$endif$" (object [])
+      apply [] "$if(x$and$endif$" (object [])
         `shouldBe`
         (Left "\"template\" (line 1, column 6):\nunexpected \"$\"\nexpecting \".\" or \")\"" :: Either String Text)
 

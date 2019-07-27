@@ -22,6 +22,7 @@ library
                        text,
                        containers,
                        vector,
+                       filepath,
                        parsec,
                        mtl,
                        unordered-containers,
@@ -37,6 +38,7 @@ test-suite doctemplates-test
   main-is:             Spec.hs
   build-depends:       base,
                        doctemplates,
+                       mtl,
                        aeson,
                        hspec,
                        text
