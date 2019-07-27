@@ -22,6 +22,7 @@ TODO: Add haddocks generated from README.md.
 module Text.DocTemplates ( renderTemplate
                          , compileTemplate
                          , applyTemplate
+                         , TemplateMonad(..)
                          , Template(..)
                          , TemplatePart(..)
                          , Variable(..)
@@ -31,7 +32,6 @@ import Data.Char (isAlphaNum)
 import Control.Monad (guard, when)
 import Data.Aeson (Value(..), ToJSON(..))
 import qualified Text.Parsec as P
-import Text.Parsec.Text (Parser)
 import Control.Monad.State
 import Control.Applicative
 import qualified Data.Text as T
@@ -122,41 +122,49 @@ renderer (Template xs) val = mconcat <$> mapM renderPart xs
                   "" -> return mempty
                   _  -> renderer t val
 
-compileTemplate :: Text -> Either String Template
-compileTemplate template =
-  case P.parse (pTemplate <* P.eof) "template" template of
-       Left e   -> Left (show e)
-       Right x  -> Right x
+class Monad m => TemplateMonad m where
+  getPartial  :: String -> m Text
+  reportError :: String -> m a
 
-applyTemplate :: ToJSON a => Text -> a -> Either String Text
-applyTemplate t val =
-  case compileTemplate t of
-    Left e   -> Left e
-    Right ct -> Right $ renderTemplate ct val
+instance TemplateMonad (Either String) where
+  getPartial s = reportError $ "Could not get partial: " <> s
+  reportError s = Left s
 
+compileTemplate :: TemplateMonad m => Text -> m Template
+compileTemplate template = do
+  res <- P.runParserT (pTemplate <* P.eof) () "template" template
+  case res of
+       Left e   -> reportError (show e)
+       Right x  -> return x
 
-pTemplate :: Parser Template
+applyTemplate :: (TemplateMonad m, ToJSON a)
+              => Text -> a -> m Text
+applyTemplate t val = (flip renderTemplate val) <$> compileTemplate t
+
+type Parser = P.ParsecT Text ()
+
+pTemplate :: Monad m => Parser m Template
 pTemplate = do
   ts <- many (P.skipMany pComment *> (pLit <|> pDirective <|> pEscape))
   P.skipMany pComment
   return $ Template ts
 
-pLit :: Parser TemplatePart
+pLit :: Monad m => Parser m TemplatePart
 pLit = Literal . mconcat <$>
   P.many1 (T.pack <$> P.many1 (P.satisfy (/= '$')))
 
-backupSourcePos :: Int -> Parser ()
+backupSourcePos :: Monad m => Int -> Parser m ()
 backupSourcePos n = do
   pos <- P.getPosition
   P.setPosition $ P.incSourceColumn pos (- n)
 
-pEscape :: Parser TemplatePart
+pEscape :: Monad m => Parser m TemplatePart
 pEscape = (Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1))
 
-pDirective :: Parser TemplatePart
+pDirective :: Monad m => Parser m TemplatePart
 pDirective = pConditional <|> pForLoop <|> pInterpolate
 
-pEnclosed :: Parser a -> Parser a
+pEnclosed :: Monad m => Parser m a -> Parser m a
 pEnclosed parser = P.try $ do
   closer <- pOpen
   P.skipMany pSpaceOrTab
@@ -165,14 +173,14 @@ pEnclosed parser = P.try $ do
   closer
   return result
 
-pParens :: Parser a -> Parser a
+pParens :: Monad m => Parser m a -> Parser m a
 pParens parser = do
   P.char '('
   result <- parser
   P.char ')'
   return result
 
-pConditional :: Parser TemplatePart
+pConditional :: Monad m => Parser m TemplatePart
 pConditional = do
   v <- pEnclosed $ P.try (P.string "if") *> pParens pVar
   -- if newline after the "if", then a newline after "endif" will be swallowed
@@ -186,10 +194,10 @@ pConditional = do
   when multiline $ P.option () skipEndline
   return $ Conditional v ifContents elseContents
 
-skipEndline :: Parser ()
+skipEndline :: Monad m => Parser m ()
 skipEndline = P.try $ P.skipMany pSpaceOrTab <* P.char '\n'
 
-pForLoop :: Parser TemplatePart
+pForLoop :: Monad m => Parser m TemplatePart
 pForLoop = do
   v <- pEnclosed $ P.try (P.string "for") *> pParens pVar
   -- if newline after the "for", then a newline after "endfor" will be swallowed
@@ -203,13 +211,13 @@ pForLoop = do
   when multiline $ P.option () skipEndline
   return $ Iterate v contents sep
 
-pInterpolate :: Parser TemplatePart
+pInterpolate :: Monad m => Parser m TemplatePart
 pInterpolate = Interpolate <$> pEnclosed pVar
 
-pSpaceOrTab :: Parser Char
+pSpaceOrTab :: Monad m => Parser m Char
 pSpaceOrTab = P.satisfy (\c -> c == ' ' || c == '\t')
 
-pComment :: Parser ()
+pComment :: Monad m => Parser m ()
 pComment = do
   pos <- P.getPosition
   P.try (P.string "$--")
@@ -219,29 +227,29 @@ pComment = do
   when (P.sourceColumn pos == 1) $ () <$ P.char '\n'
   return ()
 
-pOpenDollar :: Parser (Parser ())
+pOpenDollar :: Monad m => Parser m (Parser m ())
 pOpenDollar =
   pCloseDollar <$ P.try (P.char '$' <*
                    P.notFollowedBy (P.char '$' <|> P.char '{'))
   where
    pCloseDollar = () <$ P.char '$'
 
-pOpenBraces :: Parser (Parser ())
+pOpenBraces :: Monad m => Parser m (Parser m ())
 pOpenBraces =
   pCloseBraces <$ P.try (P.string "${" <* P.notFollowedBy (P.char '}'))
   where
    pCloseBraces = () <$ P.try (P.char '}')
 
-pOpen :: Parser (Parser ())
+pOpen :: Monad m => Parser m (Parser m ())
 pOpen = pOpenDollar <|> pOpenBraces
 
-pVar :: Parser Variable
+pVar :: Monad m => Parser m Variable
 pVar = do
   first <- pIdentPart <|> "it" <$ (P.try (P.string "it"))
   rest <- P.many $ P.char '.' *> pIdentPart
   return $ Variable (first:rest)
 
-pIdentPart :: Parser Text
+pIdentPart :: Monad m => Parser m Text
 pIdentPart = P.try $ do
   first <- P.letter
   rest <- T.pack <$>
