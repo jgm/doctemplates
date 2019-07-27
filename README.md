@@ -176,10 +176,25 @@ So the second example above is equivalent to
 ${ for(articles) }
 ${ it:bibentry() }
 ${ endfor }
+```
 
 Final newlines are omitted from included partials.
 
 Partials may include other partials.  If you exceed
 a nesting level of 50, though, in resolving partials,
 the literal `(loop)` will be returned, to avoid infinite loops.
+
+A separator between values of an array may be specified
+in square brackets, immediately after the variable name
+or partial:
+
+```
+${months[, ]}$
+
+${articles:bibentry()[; ]$
+```
+
+The separator in this case is literal and (unlike with `sep`
+in an explicit `for` loop) cannot contain interpolated
+variables or other template directives.
 

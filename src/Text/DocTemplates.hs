@@ -242,7 +242,11 @@ pForLoop = do
 pInterpolate :: TemplateMonad m => Parser m TemplatePart
 pInterpolate = pEnclosed $ do
   var <- P.try $ pVar <* P.notFollowedBy (P.char '(')
-  (P.char ':' *> pPartial (Just var)) <|> return (Interpolate var)
+  (P.char ':' *> pPartial (Just var))
+    <|> do separ <- pSep
+           return (Iterate var (Template [Interpolate (Variable ["it"])])
+                    separ)
+    <|> return (Interpolate var)
 
 pBarePartial :: TemplateMonad m => Parser m TemplatePart
 pBarePartial = pEnclosed $ pPartial Nothing
@@ -251,6 +255,7 @@ pPartial :: TemplateMonad m => Maybe Variable -> Parser m TemplatePart
 pPartial mbvar = do
   fp <- P.many1 (P.alphaNum <|> P.oneOf ['_','-','.'])
   P.string "()"
+  separ <- P.option mempty pSep
   partial <- removeFinalNewline <$> getPartial fp
   nesting <- partialNesting <$> P.getState
   t <- if nesting > 50
@@ -267,8 +272,15 @@ pPartial mbvar = do
             P.setPosition oldPos
             return res
   case mbvar of
-    Just var -> return $ Iterate var t mempty
+    Just var -> return $ Iterate var t separ
     Nothing  -> return $ Partial t
+
+pSep :: Monad m => Parser m Template
+pSep = do
+    P.char '['
+    xs <- P.many (P.satisfy (\c -> c /= ']'))
+    P.char ']'
+    return $ Template [Literal (T.pack xs)]
 
 removeFinalNewline :: Text -> Text
 removeFinalNewline t =
