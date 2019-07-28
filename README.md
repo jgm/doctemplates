@@ -26,7 +26,7 @@ template = "$for(employee)$Hi, $employee.name.first$. $if(employee.salary)$You m
 
 main :: IO ()
 main = do
-  res <- compileTemplate ["partials"] template
+  res <- compileTemplate "mytemplate.txt" template
   case res of
          Left e    -> error e
          Right t   -> T.putStrLn $ renderTemplate t $ object
@@ -81,7 +81,9 @@ passed as a parameter to `renderTemplate`.  So, for example,
 of the object that is the value of the `employee` field.
 
 - If the value of the variable is a JSON string, the string will
-  be rendered.
+  be rendered verbatim.  (Note that no escaping is done on the
+  string; the assumption is that the calling program will escape
+  the strings appropriately for the output format.)
 - If the value is a JSON array, the values will be concatenated
   with commas and spaces between them.
 - If the value is a JSON object, the string `true` will be
