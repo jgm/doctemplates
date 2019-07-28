@@ -1,0 +1,16 @@
+{ "employee":
+  [ { "name": { "first": "John", "last": "Doe" } }
+  , { "name": { "first": "Omar", "last": "Smith" }
+    , "salary": "30000" }
+  , { "name": { "first": "Sara", "last": "Chen" }
+    , "salary": "60000" }
+  ]
+}
+.
+${ for(employee) }
+Hi, ${employee.name.first}. ${ if(employee.salary) }You make $$${ employee.salary }.${ else }No salary data.${ endif }
+${ endfor }
+.
+Hi, John. No salary data.
+Hi, Omar. You make $30000.
+Hi, Sara. You make $60000.

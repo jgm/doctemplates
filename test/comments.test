@@ -1,0 +1,9 @@
+{ "foo": 3 }
+.
+$-- a comment
+$--${foo} more comment
+$$-- not a comment
+a$-- comment
+.
+$-- not a comment
+a

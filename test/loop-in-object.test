@@ -1,0 +1,19 @@
+{ "worksite":
+  { "name": "canyon"
+  , "workers":
+       [ { "name": { "first": "John", "last": "Doe" } }
+       , { "name": { "first": "Omar", "last": "Smith" }
+         , "salary": "30000" }
+       , { "name": { "first": "Sara", "last": "Chen" }
+         , "salary": "60000" }
+       ]
+  }
+}
+.
+${ for(worksite.workers) }
+${it.name.last}, ${it.name.first}
+${ endfor }
+.
+Doe, John
+Smith, Omar
+Chen, Sara
