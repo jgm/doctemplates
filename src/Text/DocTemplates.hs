@@ -140,12 +140,10 @@ instance TemplateMonad Identity where
 
 instance TemplateMonad IO where
   getPartial s  = do
-    st <- P.getState
-    let s' = replaceBaseName s (templatePath st)
     res <- liftIO $ tryJust (guard . isDoesNotExistError)
-              (TIO.readFile s')
+              (TIO.readFile s)
     case res of
-      Left _  -> fail $ "Could not get partial " ++ s'
+      Left _  -> fail $ "Could not get partial " ++ s
       Right x -> return x
 
 compileTemplate :: TemplateMonad m
@@ -240,7 +238,7 @@ pForLoop = do
 
 pInterpolate :: TemplateMonad m => Parser m TemplatePart
 pInterpolate = pEnclosed $ do
-  var <- P.try $ pVar <* P.notFollowedBy (P.char '(')
+  var <- pVar
   (P.char ':' *> pPartial (Just var))
     <|> do separ <- pSep
            return (Iterate var (Template [Interpolate (Variable ["it"])])
@@ -256,7 +254,7 @@ pPartial mbvar = do
   P.string "()"
   separ <- P.option mempty pSep
   tp <- templatePath <$> P.getState
-  let fp' = replaceBaseName fp tp
+  let fp' = replaceBaseName tp fp
   partial <- removeFinalNewline <$> getPartial fp'
   nesting <- partialNesting <$> P.getState
   t <- if nesting > 50
