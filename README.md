@@ -80,8 +80,17 @@ passed as a parameter to `renderTemplate`.  So, for example,
 `employee.salary` will return the value of the `salary` field
 of the object that is the value of the `employee` field.
 
-TODO: what if it's an array? what if it's an object? what if it's
-a number? what if it's a boolean?
+- If the value of the variable is a JSON string, the string will
+  be rendered.
+- If the value is a JSON array, the values will be concatenated
+  with commas and spaces between them.
+- If the value is a JSON object, the string `true` will be
+  rendered.
+- If the value is a JSON number, it will be rendered as an
+  integer if possible, otherwise as a floating-point number.
+- If the value is a JSON boolean, it will be rendered as `true`
+  if true, and as the empty string if false.
+- Every other value will be rendered as the empty string.
 
 The value of a variable will be indented to the same level as the
 opening delimiter of the variable.
@@ -92,8 +101,9 @@ A conditional begins with `if(variable)` (enclosed in
 matched delimiters) and ends with `endif` (enclosed in matched
 delimiters).  It may optionally contain an `else` (enclosed in
 matched delimiters).  The `if` section is used if
-`variable` has a non-null value, otherwise the `else`
-section is used (if present).  Examples:
+`variable` has a non-empty value, otherwise the `else`
+section is used (if present).  (Note that even the
+string `false` counts as a true value.) Examples:
 
 ```
 $if(foo)$bar$endif$
