@@ -254,7 +254,9 @@ pPartial mbvar = do
   P.string "()"
   separ <- P.option mempty pSep
   tp <- templatePath <$> P.getState
-  let fp' = replaceBaseName tp fp
+  let fp' = case takeExtension fp of
+               "" -> replaceBaseName tp fp
+               _  -> replaceFileName tp fp
   partial <- removeFinalNewline <$> getPartial fp'
   nesting <- partialNesting <$> P.getState
   t <- if nesting > 50
