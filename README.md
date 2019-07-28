@@ -4,7 +4,7 @@ This is the templating system used by pandoc.  It was formerly
 be a module in pandoc. It has been split off to make it easier
 to use independently.
 
-Example:
+## Example of use
 
 ``` haskell
 {-# LANGUAGE OverloadedStrings #-}
@@ -37,6 +37,8 @@ main = do
                         ]
 ```
 
+## Delimiters
+
 To mark variables and control structures in the template,
 either `$`...`$` or `${`...`}` may be used as delimiters.
 The styles may also be mixed in the same template, but the
@@ -48,8 +50,12 @@ ignored.
 
 To include a literal `$` in the document, use `$$`.
 
+## Comments
+
 Anything between the sequence `$--` and the end of the
 line will be treated as a comment and omitted from the output.
+
+## Interpolated variables
 
 A slot for an interpolated variable is a variable name surrounded
 by matched delimiters.  Variable names must begin with a letter
@@ -74,8 +80,13 @@ passed as a parameter to `renderTemplate`.  So, for example,
 `employee.salary` will return the value of the `salary` field
 of the object that is the value of the `employee` field.
 
+TODO: what if it's an array? what if it's an object? what if it's
+a number? what if it's a boolean?
+
 The value of a variable will be indented to the same level as the
 opening delimiter of the variable.
+
+## Conditionals
 
 A conditional begins with `if(variable)` (enclosed in
 matched delimiters) and ends with `endif` (enclosed in matched
@@ -112,6 +123,8 @@ ${endif}
 
 Conditional keywords should not be indented, or unexpected spacing
 problems may occur.
+
+## For loops
 
 A for loop begins with `for(variable)` (enclosed in
 matched delimiters) and ends with `endfor` (enclosed in matched
@@ -151,6 +164,8 @@ ${ for(foo.bar) }
   - ${ it.last }, ${ it.first }
 ${ endfor }
 ```
+
+## Partials
 
 Partials (subtemplates stored in different files) may be
 included using the syntax
