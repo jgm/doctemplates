@@ -49,7 +49,7 @@ import Data.Text (Text)
 import Data.List (intersperse)
 import qualified Data.HashMap.Strict as H
 import Data.Foldable (toList)
-import Data.Vector ((!?))
+import qualified Data.Vector as V
 import Data.Scientific (floatingOrInteger)
 import Data.Semigroup (Semigroup, (<>))
 import System.FilePath
@@ -337,7 +337,8 @@ reservedWords = ["else","endif","for","endfor","sep","it"]
 resolveVar :: Variable -> Value -> Text
 resolveVar (Variable var') val =
   case multiLookup var' val of
-       Just (Array vec) -> maybe mempty (resolveVar mempty) $ vec !? 0
+       Just (Array vec) -> T.intercalate ", " $
+                           map (resolveVar mempty) $ V.toList vec
        Just (String t)  -> T.stripEnd t
        Just (Number n)  -> case floatingOrInteger n of
                                    Left (r :: Double)   -> T.pack $ show r
