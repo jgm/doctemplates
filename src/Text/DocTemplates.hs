@@ -252,7 +252,7 @@ pBarePartial = pEnclosed $ pPartial Nothing
 
 pPartial :: TemplateMonad m => Maybe Variable -> Parser m TemplatePart
 pPartial mbvar = do
-  fp <- P.many1 (P.alphaNum <|> P.oneOf ['_','-','.'])
+  fp <- P.many1 (P.alphaNum <|> P.oneOf ['_','-','.','/','\\'])
   P.string "()"
   separ <- P.option mempty pSep
   tp <- templatePath <$> P.getState
