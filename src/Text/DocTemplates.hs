@@ -141,32 +141,30 @@ instance TemplateMonad Identity where
 instance TemplateMonad IO where
   getPartial s  = do
     st <- P.getState
-    let tryFiles [] = fail $ "Could not get partial: " <> s
-        tryFiles (f:fs) = do
-          res <- liftIO $
-                   tryJust (guard . isDoesNotExistError) (TIO.readFile f)
-          case res of
-            Left _  -> tryFiles fs
-            Right x -> return x
-    tryFiles $ map (</> s) (searchPath st)
+    let s' = replaceBaseName s (templatePath st)
+    res <- liftIO $ tryJust (guard . isDoesNotExistError)
+              (TIO.readFile s')
+    case res of
+      Left _  -> fail $ "Could not get partial " ++ s'
+      Right x -> return x
 
 compileTemplate :: TemplateMonad m
-                => [FilePath] -> Text -> m (Either String Template)
-compileTemplate templatePaths template = do
+                => FilePath -> Text -> m (Either String Template)
+compileTemplate templatePath template = do
   res <- P.runParserT (pTemplate <* P.eof)
-           PState{ searchPath     = templatePaths
+           PState{ templatePath   = templatePath
                  , partialNesting = 1 } "template" template
   case res of
        Left e   -> return $ Left $ show e
        Right x  -> return $ Right x
 
 applyTemplate :: (TemplateMonad m, ToJSON a)
-              => [FilePath] -> Text -> a -> m (Either String Text)
-applyTemplate fps t val =
-  fmap (flip renderTemplate val) <$> compileTemplate fps t
+              => FilePath -> Text -> a -> m (Either String Text)
+applyTemplate fp t val =
+  fmap (flip renderTemplate val) <$> compileTemplate fp t
 
 data PState =
-  PState { searchPath     :: [FilePath]
+  PState { templatePath   :: FilePath
          , partialNesting :: Int }
 
 type Parser = P.ParsecT Text PState
