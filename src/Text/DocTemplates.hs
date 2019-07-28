@@ -150,9 +150,9 @@ instance TemplateMonad IO where
 
 compileTemplate :: TemplateMonad m
                 => FilePath -> Text -> m (Either String Template)
-compileTemplate templatePath template = do
+compileTemplate templPath template = do
   res <- P.runParserT (pTemplate <* P.eof)
-           PState{ templatePath   = templatePath
+           PState{ templatePath   = templPath
                  , partialNesting = 1 } "template" template
   case res of
        Left e   -> return $ Left $ show e
@@ -254,7 +254,9 @@ pPartial mbvar = do
   fp <- P.many1 (P.alphaNum <|> P.oneOf ['_','-','.'])
   P.string "()"
   separ <- P.option mempty pSep
-  partial <- removeFinalNewline <$> getPartial fp
+  tp <- templatePath <$> P.getState
+  let fp' = replaceBaseName fp tp
+  partial <- removeFinalNewline <$> getPartial fp'
   nesting <- partialNesting <$> P.getState
   t <- if nesting > 50
           then return $ Template [Literal "(loop)"]
