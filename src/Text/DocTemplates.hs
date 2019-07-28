@@ -171,7 +171,8 @@ type Parser = P.ParsecT Text PState
 
 pTemplate :: TemplateMonad m => Parser m Template
 pTemplate = do
-  ts <- many (P.skipMany pComment *> (pLit <|> pDirective <|> pEscape))
+  ts <- many $ P.try
+         (P.skipMany pComment *> (pLit <|> pDirective <|> pEscape))
   P.skipMany pComment
   return $ Template ts
 
