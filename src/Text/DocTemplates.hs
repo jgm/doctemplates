@@ -95,6 +95,9 @@ instance Monoid Variable where
 renderTemplate :: ToJSON a => Template -> a -> Text
 renderTemplate t context = evalState (renderer t (toJSON context)) 0
 
+it :: Variable
+it = Variable ["it"]
+
 renderer :: Template -> Value -> State Int Text
 renderer (Template xs) val = mconcat <$> mapM renderPart xs
   where
@@ -124,12 +127,11 @@ renderer (Template xs) val = mconcat <$> mapM renderPart xs
              sep' <- renderer sep val
              iters <- mapM (\iterval -> renderer t .
                                 replaceVar v iterval .
-                                replaceVar (Variable ["it"]) iterval $
+                                replaceVar it iterval $
                                 val) (toList vec)
              return $ mconcat $ intersperse sep' iters
-           _ -> case resolveVar v val of
-                  "" -> return mempty
-                  _  -> renderer t val
+           Just val' -> renderer t $ replaceVar it val' $ val
+           Nothing -> return mempty
        Partial t -> renderer t val
 
 class Monad m => TemplateMonad m where
@@ -241,7 +243,7 @@ pInterpolate = pEnclosed $ do
   var <- pVar
   (P.char ':' *> pPartial (Just var))
     <|> do separ <- pSep
-           return (Iterate var (Template [Interpolate (Variable ["it"])])
+           return (Iterate var (Template [Interpolate it])
                     separ)
     <|> return (Interpolate var)
 
