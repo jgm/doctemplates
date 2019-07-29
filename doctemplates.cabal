@@ -12,6 +12,7 @@ category:            Text
 build-type:          Simple
 -- extra-source-files:
 data-files:          README.md
+                     changelog.md
 extra-source-files:  test/*.test
                      test/*.txt
                      test/*.tex
