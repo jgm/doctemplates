@@ -6,7 +6,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
 {- |
    Module      : Text.Pandoc.Templates
    Copyright   : Copyright (C) 2009-2016 John MacFarlane
@@ -336,7 +335,7 @@ renderer (Template xs) val = mconcat <$> mapM renderPart xs
                                 replaceVar it iterval $
                                 val) (toList vec)
              return $ mconcat $ intersperse sep' iters
-           Just val' -> renderer t $ replaceVar it val' $ val
+           Just val' -> renderer t $ replaceVar it val' val
            Nothing -> return mempty
        Partial t -> renderer t val
 
@@ -367,7 +366,7 @@ compileTemplate templPath template = do
 applyTemplate :: (TemplateMonad m, ToJSON a)
               => FilePath -> Text -> a -> m (Either String Text)
 applyTemplate fp t val =
-  fmap (flip renderTemplate val) <$> compileTemplate fp t
+  fmap (`renderTemplate` val) <$> compileTemplate fp t
 
 data PState =
   PState { templatePath   :: FilePath
@@ -392,7 +391,7 @@ backupSourcePos n = do
   P.setPosition $ P.incSourceColumn pos (- n)
 
 pEscape :: Monad m => Parser m TemplatePart
-pEscape = (Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1))
+pEscape = Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1)
 
 pDirective :: TemplateMonad m => Parser m TemplatePart
 pDirective = pConditional <|> pForLoop <|> pInterpolate <|> pBarePartial
@@ -487,7 +486,7 @@ pPartial mbvar = do
 pSep :: Monad m => Parser m Template
 pSep = do
     P.char '['
-    xs <- P.many (P.satisfy (\c -> c /= ']'))
+    xs <- P.many (P.satisfy (/= ']'))
     P.char ']'
     return $ Template [Literal (T.pack xs)]
 
@@ -508,7 +507,6 @@ pComment = do
   -- If the comment begins in the first column, the line ending
   -- will be consumed; otherwise not.
   when (P.sourceColumn pos == 1) $ () <$ P.char '\n'
-  return ()
 
 pOpenDollar :: Monad m => Parser m (Parser m ())
 pOpenDollar =
@@ -528,7 +526,7 @@ pOpen = pOpenDollar <|> pOpenBraces
 
 pVar :: Monad m => Parser m Variable
 pVar = do
-  first <- pIdentPart <|> "it" <$ (P.try (P.string "it"))
+  first <- pIdentPart <|> "it" <$ P.try (P.string "it")
   rest <- P.many $ P.char '.' *> pIdentPart
   return $ Variable (first:rest)
 
