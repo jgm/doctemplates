@@ -185,6 +185,20 @@ included using the syntax
 ${ boilerplate() }
 ```
 
+The partials are obtained using `getPartial` from
+the `TemplateMonad` class.  This may be implemented
+differently in different monads.  The path passed
+to `getPartial` is computed on the basis of the
+original template path (a parameter to `compileTemplate`)
+and the partial's name.  The partial's name is substituted
+for the *base name* of the original template path
+(leaving the original template's extension), unless
+the partial has an explicit extension, in which case
+this is kept.  So, with the `TemplateMonad` instance
+for IO, partials will be sought in the directory
+containing the main template, and will be assumed
+to have the extension of the main template.
+
 Partials may optionally be applied to variables using
 a colon:
 
