@@ -84,8 +84,7 @@ of the object that is the value of the `employee` field.
   be rendered verbatim.  (Note that no escaping is done on the
   string; the assumption is that the calling program will escape
   the strings appropriately for the output format.)
-- If the value is a JSON array, the values will be concatenated
-  with commas and spaces between them.
+- If the value is a JSON array, the values will be concatenated.
 - If the value is a JSON object, the string `true` will be
   rendered.
 - If the value is a JSON number, it will be rendered as an

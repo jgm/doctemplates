@@ -341,8 +341,7 @@ reservedWords = ["else","endif","for","endfor","sep","it"]
 resolveVar :: Variable -> Value -> Text
 resolveVar (Variable var') val =
   case multiLookup var' val of
-       Just (Array vec) -> T.intercalate ", " $
-                           map (resolveVar mempty) $ V.toList vec
+       Just (Array vec) -> mconcat $ map (resolveVar mempty) $ V.toList vec
        Just (String t)  -> T.stripEnd t
        Just (Number n)  -> case floatingOrInteger n of
                                    Left (r :: Double)   -> T.pack $ show r
