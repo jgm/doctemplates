@@ -9,7 +9,7 @@
 .
 $for(employee)$
 Hi, $employee.name.first$. $if(employee.salary)$You make $$$employee.salary$.$else$No salary data.$endif$
-$endfor$
+$ endfor $
 .
 Hi, John. No salary data.
 Hi, Omar. You make $30000.

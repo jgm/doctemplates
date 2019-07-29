@@ -1,0 +1,20 @@
+{ "foo": 1,
+  "bar": null,
+  "baz": ["a", "b"],
+  "bim": { "zub": "sim" },
+  "sup": [ { "biz": "qux" }
+         , { "sax": 2 }
+         ]
+}
+.
+$foo$
+$bar$
+$baz$
+$bim$
+$sup$
+.
+1
+
+a, b
+true
+true, true
