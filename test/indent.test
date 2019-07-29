@@ -1,0 +1,18 @@
+{ "foo": "FOO"
+, "bar": [ "LINE1\n LINE2"
+         , "LINE3\n LINE4"
+         ]
+}
+.
+$if(foo)$
+   $foo$
+$endif$
+$for(bar)$
+  $bar$
+$endfor$
+.
+   FOO
+  LINE1
+   LINE2
+  LINE3
+   LINE4

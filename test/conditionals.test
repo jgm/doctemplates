@@ -1,0 +1,35 @@
+{ "foo": 1,
+  "bar": null,
+  "baz": ["a", "b"],
+  "bim": { "zub": "sim" },
+  "sup": [ { "biz": "qux" }
+         , { "sax": "" }
+         ]
+}
+.
+${if(sup.sax)}
+XXX
+${else}
+YYY
+${endif}
+${if(bar)}
+BAR
+${endif}
+${if(foo)}
+FOO
+${endif}
+${if(baz)}
+BAZ
+${endif}
+${if(bim)}
+BIM
+${endif}
+${if(sup)}
+SUP
+${endif}
+.
+YYY
+FOO
+BAZ
+BIM
+SUP
