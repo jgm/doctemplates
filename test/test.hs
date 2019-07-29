@@ -14,6 +14,7 @@ import Data.Aeson
 import Control.Monad.Identity
 import System.FilePath.Glob
 import qualified Data.ByteString.Lazy as BL
+import Data.Semigroup ((<>))
 
 main :: IO ()
 main = withTempDirectory "test" "out." $ \tmpdir -> do
