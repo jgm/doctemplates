@@ -1,0 +1,21 @@
+{ "employee":
+  [ { "name": { "first": "John", "last": "Doe" } }
+  , { "name": { "first": "Omar", "last": "Smith" }
+    , "salary": "30000" }
+  , { "name": { "first": "Sara", "last": "Chen" }
+    , "salary": "60000" }
+  ]
+}
+.
+$for(employee)$
+$employee.name.first$ $employee.name.last$$sep$;
+$endfor$
+
+
+$for(employee)$$employee.salary$$sep$:$endfor$
+.
+John Doe;
+Omar Smith;
+Sara Chen
+
+:30000:60000

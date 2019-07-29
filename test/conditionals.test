@@ -15,6 +15,7 @@ ${endif}
 ${if(bar)}
 BAR
 ${endif}
+${if(bar)}BAR${endif}
 ${if(foo)}
 FOO
 ${endif}
@@ -29,6 +30,7 @@ SUP
 ${endif}
 .
 YYY
+
 FOO
 BAZ
 BIM
