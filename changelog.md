@@ -1,5 +1,13 @@
 # doctemplates
 
+## 0.3.0.1
+
+* Bump lower bound on base to 4.9, drop support for ghc 7.10.
+
+* Add needed import for older base versions.
+
+* Add test.hs to repository.
+
 ## 0.3
 
 * Note that all of the changes to template syntax described
