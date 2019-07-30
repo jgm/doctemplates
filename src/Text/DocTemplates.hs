@@ -7,7 +7,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {- |
-   Module      : Text.Pandoc.Templates
+   Module      : Text.DocTemplates
    Copyright   : Copyright (C) 2009-2016 John MacFarlane
    License     : BSD3
 
