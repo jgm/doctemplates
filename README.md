@@ -1,7 +1,7 @@
 # doctemplates
 
 This is the templating system used by pandoc.  It was formerly
-be a module in pandoc. It has been split off to make it easier
+a module in pandoc. It has been split off to make it easier
 to use independently.
 
 ## Example of use
