@@ -93,8 +93,9 @@ of the object that is the value of the `employee` field.
   if true, and as the empty string if false.
 - Every other value will be rendered as the empty string.
 
-The value of a variable will be indented to the same level as the
-opening delimiter of the variable.
+The value of a variable that occurs by itself on a line
+will be indented to the same level as the opening delimiter of
+the variable.
 
 ## Conditionals
 

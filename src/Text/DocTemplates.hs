@@ -232,6 +232,7 @@ module Text.DocTemplates ( renderTemplate
                          , Template(..)
                          , TemplatePart(..)
                          , Variable(..)
+                         , Indented(..)
                          ) where
 
 import Data.Char (isAlphaNum)
@@ -274,8 +275,11 @@ instance Monoid Template where
   mempty = Template []
 #endif
 
+data Indented = Indented | Unindented
+     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
+
 data TemplatePart =
-       Interpolate Variable
+       Interpolate Indented Variable
      | Conditional Variable Template Template
      | Iterate Variable Template Template
      | Partial Template
@@ -317,9 +321,13 @@ renderer (Template xs) val = mconcat <$> mapM renderPart xs
        Literal t -> do
          modifyIndent t
          return t
-       Interpolate v -> do
-         ind <- get
-         let t = indent ind $ resolveVar v val
+       Interpolate indented v -> do
+         f <- case indented of
+                 Indented -> do
+                   ind <- get
+                   return (indent ind)
+                 _        -> return id
+         let t = f $ resolveVar v val
          modifyIndent t
          return t
        Conditional v ift elset -> renderer branch val
@@ -358,7 +366,8 @@ compileTemplate :: TemplateMonad m
 compileTemplate templPath template = do
   res <- P.runParserT (pTemplate <* P.eof)
            PState{ templatePath   = templPath
-                 , partialNesting = 1 } "template" template
+                 , partialNesting = 1
+                 , beginsLine = True } "template" template
   case res of
        Left e   -> return $ Left $ show e
        Right x  -> return $ Right x
@@ -370,7 +379,8 @@ applyTemplate fp t val =
 
 data PState =
   PState { templatePath   :: FilePath
-         , partialNesting :: Int }
+         , partialNesting :: Int
+         , beginsLine     :: Bool }
 
 type Parser = P.ParsecT Text PState
 
@@ -382,8 +392,15 @@ pTemplate = do
   return $ Template ts
 
 pLit :: Monad m => Parser m TemplatePart
-pLit = Literal . mconcat <$>
-  P.many1 (T.pack <$> P.many1 (P.satisfy (/= '$')))
+pLit = do
+  cs <- mconcat <$> P.many1 (T.pack <$> P.many1 (P.satisfy (/= '$')))
+  P.updateState $ \st ->
+    st{ beginsLine =
+          case T.unsnoc (T.dropWhileEnd (\c -> c == ' ' || c == '\t') cs) of
+            Just (_,'\n') -> True
+            Nothing       -> beginsLine st
+            _             -> False }
+  return $ Literal cs
 
 backupSourcePos :: Monad m => Int -> Parser m ()
 backupSourcePos n = do
@@ -394,7 +411,11 @@ pEscape :: Monad m => Parser m TemplatePart
 pEscape = Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1)
 
 pDirective :: TemplateMonad m => Parser m TemplatePart
-pDirective = pConditional <|> pForLoop <|> pInterpolate <|> pBarePartial
+pDirective = do
+  res <- pConditional <|> pForLoop <|> pInterpolate <|> pBarePartial
+  col <- P.sourceColumn <$> P.getPosition
+  P.updateState $ \st -> st{ beginsLine = col == 1 }
+  return res
 
 pEnclosed :: Monad m => Parser m a -> Parser m a
 pEnclosed parser = P.try $ do
@@ -444,13 +465,23 @@ pForLoop = do
   return $ Iterate v contents sep
 
 pInterpolate :: TemplateMonad m => Parser m TemplatePart
-pInterpolate = pEnclosed $ do
-  var <- pVar
-  (P.char ':' *> pPartial (Just var))
-    <|> do separ <- pSep
-           return (Iterate var (Template [Interpolate it])
-                    separ)
-    <|> return (Interpolate var)
+pInterpolate = do
+  begins <- beginsLine <$> P.getState
+  res <- pEnclosed $ do
+    var <- pVar
+    (P.char ':' *> pPartial (Just var))
+      <|> do separ <- pSep
+             return (Iterate var (Template [Interpolate Unindented it])
+                      separ)
+      <|> return (Interpolate Unindented var)
+  ends <- P.lookAhead $ P.option False $
+             True <$ P.try (P.skipMany pSpaceOrTab *> P.newline)
+  case (begins && ends, res) of
+    (True, Interpolate _ v)
+               -> return $ Interpolate Indented v
+    (True, Iterate v (Template [Interpolate _ v']) s)
+               -> return $ Iterate v (Template [Interpolate Indented v']) s
+    _ -> return res
 
 pBarePartial :: TemplateMonad m => Parser m TemplatePart
 pBarePartial = pEnclosed $ pPartial Nothing
@@ -506,7 +537,9 @@ pComment = do
   P.skipMany (P.satisfy (/='\n'))
   -- If the comment begins in the first column, the line ending
   -- will be consumed; otherwise not.
-  when (P.sourceColumn pos == 1) $ () <$ P.char '\n'
+  when (P.sourceColumn pos == 1) $ () <$ do
+    P.char '\n'
+    P.updateState $ \st -> st{ beginsLine = True }
 
 pOpenDollar :: Monad m => Parser m (Parser m ())
 pOpenDollar =

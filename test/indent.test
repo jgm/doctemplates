@@ -1,4 +1,4 @@
-{ "foo": "FOO"
+{ "foo": "FOO1\nFOO2"
 , "bar": [ "LINE1\n LINE2"
          , "LINE3\n LINE4"
          ]
@@ -10,9 +10,21 @@ $endif$
 $for(bar)$
   $bar$
 $endfor$
+
+- $foo$
+  $foo$ -
+  $if(foo)$$foo$$endif$
 .
-   FOO
+   FOO1
+   FOO2
   LINE1
    LINE2
   LINE3
    LINE4
+
+- FOO1
+FOO2
+  FOO1
+FOO2 -
+  FOO1
+FOO2
