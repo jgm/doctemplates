@@ -248,6 +248,7 @@ import Control.Monad.Identity
 import Control.Applicative
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import Data.String (IsString(..))
 import Data.Data (Data)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
@@ -393,14 +394,14 @@ pTemplate = do
 
 pLit :: Monad m => Parser m TemplatePart
 pLit = do
-  cs <- mconcat <$> P.many1 (T.pack <$> P.many1 (P.satisfy (/= '$')))
+  cs <- mconcat <$> P.many1 (P.many1 (P.satisfy (/= '$')))
   P.updateState $ \st ->
     st{ beginsLine =
-          case T.unsnoc (T.dropWhileEnd (\c -> c == ' ' || c == '\t') cs) of
-            Just (_,'\n') -> True
-            Nothing       -> beginsLine st
-            _             -> False }
-  return $ Literal cs
+          case dropWhile (\c -> c == ' ' || c == '\t') $ reverse cs of
+            ('\n':_) -> True
+            []       -> beginsLine st
+            _        -> False }
+  return $ Literal $ fromString cs
 
 backupSourcePos :: Monad m => Int -> Parser m ()
 backupSourcePos n = do
@@ -519,7 +520,7 @@ pSep = do
     P.char '['
     xs <- P.many (P.satisfy (/= ']'))
     P.char ']'
-    return $ Template [Literal (T.pack xs)]
+    return $ Template [Literal (fromString xs)]
 
 removeFinalNewline :: Text -> Text
 removeFinalNewline t =
@@ -566,7 +567,7 @@ pVar = do
 pIdentPart :: Monad m => Parser m Text
 pIdentPart = P.try $ do
   first <- P.letter
-  rest <- T.pack <$>
+  rest <- fromString <$>
             P.many (P.satisfy (\c -> isAlphaNum c || c == '_' || c == '-'))
   let part = T.singleton first <> rest
   guard $ part `notElem` reservedWords
@@ -581,8 +582,8 @@ resolveVar (Variable var') val =
        Just (Array vec) -> mconcat $ map (resolveVar mempty) $ V.toList vec
        Just (String t)  -> T.stripEnd t
        Just (Number n)  -> case floatingOrInteger n of
-                                   Left (r :: Double)   -> T.pack $ show r
-                                   Right (i :: Integer) -> T.pack $ show i
+                                   Left (r :: Double)   -> fromString $ show r
+                                   Right (i :: Integer) -> fromString $ show i
        Just (Bool True) -> "true"
        Just (Object _)  -> "true"
        Just _           -> mempty
