@@ -1,4 +1,7 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE QuantifiedConstraints #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -207,6 +210,11 @@ equivalent to
 > ${ it:bibentry() }
 > ${ endfor }
 
+Note that the anaphoric keyword @it@ must be used when
+iterating over partials.  In the above examples,
+the @bibentry@ partial should contain @it.title@
+(and so on) instead of @articles.title@.
+
 Final newlines are omitted from included partials.
 
 Partials may include other partials. If you exceed a nesting level of
@@ -228,10 +236,15 @@ template directives.
 
 module Text.DocTemplates ( renderTemplate
                          , compileTemplate
+                         , compileTemplateFile
                          , applyTemplate
                          , TemplateMonad(..)
+                         , Context(..)
+                         , Val(..)
+                         , ToContext(..)
+                         , valueToContext
+                         , TemplateTarget(..)
                          , Template(..)
-                         , TemplatePart(..)
                          , Variable(..)
                          , Indented(..)
                          ) where
@@ -243,10 +256,9 @@ import qualified Text.Parsec as P
 import qualified Text.Parsec.Pos as P
 import Control.Monad.Except
 import Control.Exception
-import System.IO.Error (isDoesNotExistError)
-import Control.Monad.State
 import Control.Monad.Identity
 import Control.Applicative
+import System.IO.Error (ioeGetErrorString)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.String (IsString(..))
@@ -254,40 +266,46 @@ import Data.Data (Data)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Data.Text (Text)
-import Data.List (intersperse)
+import Data.List (intersperse, isPrefixOf)
 import qualified Data.HashMap.Strict as H
-import Data.Foldable (toList)
 import qualified Data.Vector as V
 import Data.Scientific (floatingOrInteger)
 import Data.Semigroup (Semigroup, (<>))
 import System.FilePath
 
-newtype Template = Template { unTemplate :: [TemplatePart] }
+-- | Determines whether an interpolated variable is rendered with
+-- indentation.
+data Indented = Indented !Int | Unindented
      deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
-#if MIN_VERSION_base(4,11,0)
-instance Semigroup Template where
-  Template xs <> Template ys = Template (xs <> ys)
-
-instance Monoid Template where
-  mempty = Template []
-#else
-instance Monoid Template where
-  mappend (Template xs) (Template ys) = Template (mappend xs ys)
-  mempty = Template []
-#endif
-
-data Indented = Indented | Unindented
-     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
-
-data TemplatePart =
+-- | A template.
+data Template =
        Interpolate Indented Variable
      | Conditional Variable Template Template
      | Iterate Variable Template Template
      | Partial Template
      | Literal Text
+     | Concat Template Template
+     | Empty
      deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
+#if MIN_VERSION_base(4,11,0)
+instance Semigroup Template where
+  x <> Empty = x
+  Empty <> x = x
+  x <> y = Concat x y
+
+instance Monoid Template where
+  mempty = Empty
+#else
+instance Monoid Template where
+  mappend x Empty = x
+  mappend Empty x = x
+  mappend x y = Concat x y
+  mempty = Empty
+#endif
+
+-- | A variable which may have several parts (@foo.bar.baz@).
 newtype Variable = Variable { unVariable :: [Text] }
   deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
@@ -303,66 +321,161 @@ instance Monoid Variable where
   mempty = Variable []
 #endif
 
-renderTemplate :: ToJSON a => Template -> a -> Text
-renderTemplate t context = evalState (renderer t (toJSON context)) 0
+-- | A type to which templates can be rendered.
+class Monoid a => TemplateTarget a where
+  fromText :: Text -> a
+  isEmpty  :: a -> Bool
+  nested   :: Int -> a -> a
+
+instance TemplateTarget Text where
+  fromText   = id
+  isEmpty    = T.null
+  nested 0   = id
+  nested ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
+
+-- | A 'Context' defines values for template's variables.
+newtype Context a = Context { unContext :: H.HashMap Text (Val a) }
+  deriving (Show, Semigroup, Monoid)
+
+-- | A variable value.
+data Val a =
+    SimpleVal  a
+  | ListVal    [Val a]
+  | MapVal     (Context a)
+  | NullVal
+  deriving (Show)
+
+-- | The 'ToContext' class provides automatic conversion to
+-- a 'Context'.
+class ToContext b a where
+  toContext :: b -> Context a
+
+instance TemplateTarget a => ToContext Value a where
+  toContext = valueToContext
+
+instance ToContext (Context a) a where
+  toContext = id
+
+valueToVal :: (TemplateTarget a, ToJSON b) => b -> Val a
+valueToVal x =
+  case toJSON x of
+    Array vec   -> ListVal $ map valueToVal $ V.toList vec
+    String t    -> SimpleVal $ fromText t
+    Number n    -> SimpleVal $ fromText . fromString $
+                           case floatingOrInteger n of
+                                Left (r :: Double)   -> show r
+                                Right (i :: Integer) -> show i
+    Bool True   -> SimpleVal $ fromText "true"
+    Object o    -> MapVal $ Context $ H.map valueToVal o
+    _           -> NullVal
+
+-- | Converts an Aeson 'Value' to a 'Context'.
+valueToContext :: (TemplateTarget a, ToJSON b) => b -> Context a
+valueToContext val =
+  case valueToVal val of
+    MapVal o -> o
+    _        -> Context mempty
+
+
+multiLookup :: [Text] -> Val a -> Val a
+multiLookup [] x = x
+multiLookup (v:vs) (MapVal (Context o)) =
+  case H.lookup v o of
+    Nothing -> NullVal
+    Just v' -> multiLookup vs v'
+multiLookup _ _ = NullVal
+
+resolveVariable :: TemplateTarget a => Variable -> Context a -> [a]
+resolveVariable v ctx = resolveVariable' v (MapVal ctx)
+
+resolveVariable' :: TemplateTarget a => Variable -> Val a -> [a]
+resolveVariable' v val =
+  case multiLookup (unVariable v) val of
+    ListVal xs    -> concatMap (resolveVariable' mempty) xs
+    SimpleVal t
+      | isEmpty t -> []
+      | otherwise -> [t]
+    MapVal _      -> [fromText "true"]
+    NullVal       -> []
+
+withVariable :: TemplateTarget a
+             => Variable -> Context a -> (Context a -> a) -> [a]
+withVariable  v ctx f =
+  case multiLookup (unVariable v) (MapVal ctx) of
+    ListVal xs  -> map (\iterval -> f $
+                    Context $ H.insert "it" iterval $ unContext ctx) xs
+    val' -> [f $ Context $ H.insert "it" val' $ unContext ctx]
 
 it :: Variable
 it = Variable ["it"]
 
-renderer :: Template -> Value -> State Int Text
-renderer (Template xs) val = mconcat <$> mapM renderPart xs
-  where
-   modifyIndent t = do
-     ind <- get
-     put $ T.foldl' (\cur c ->
-                 case c of
-                   '\n' -> 0
-                   _    -> cur + 1) ind t
-   renderPart x =
-     case x of
-       Literal t -> do
-         modifyIndent t
-         return t
-       Interpolate indented v -> do
-         f <- case indented of
-                 Indented -> do
-                   ind <- get
-                   return (indent ind)
-                 _        -> return id
-         let t = f $ resolveVar v val
-         modifyIndent t
-         return t
-       Conditional v ift elset -> renderer branch val
-         where branch = case resolveVar v val of
-                          "" -> elset
-                          _  -> ift
-       Iterate v t sep ->
-         case multiLookup (unVariable v) val of
-           Just (Array vec) -> do
-             sep' <- renderer sep val
-             iters <- mapM (\iterval -> renderer t .
-                                replaceVar v iterval .
-                                replaceVar it iterval $
-                                val) (toList vec)
-             return $ mconcat $ intersperse sep' iters
-           Just val' -> renderer t $ replaceVar it val' val
-           Nothing -> return mempty
-       Partial t -> renderer t val
+-- | Render a compiled template in a "context" which provides
+-- values for the template's variables.
+renderTemplate :: (TemplateTarget a, ToContext b a)
+               => Template -> b -> a
+renderTemplate t = renderTemp t . toContext
 
+renderTemp :: forall a . TemplateTarget a
+           => Template -> Context a -> a
+renderTemp (Literal t) _ = fromText t
+renderTemp (Interpolate indented v) ctx =
+  let vals = resolveVariable v ctx
+   in if null vals
+         then mempty
+         else case indented of
+                Indented ind -> nested ind $ mconcat vals
+                _            -> mconcat vals
+renderTemp (Conditional v ift elset) ctx =
+  let res = resolveVariable v ctx
+   in case res of
+        []  -> renderTemp elset ctx
+        [x] | isEmpty x -> renderTemp elset ctx
+        _  -> renderTemp ift ctx
+renderTemp (Iterate v t sep) ctx =
+  let sep' = renderTemp sep ctx
+   in mconcat . intersperse sep' $ withVariable v ctx (renderTemp t)
+renderTemp (Partial t) ctx = renderTemp t ctx
+renderTemp (Concat t1 t2) ctx =
+  mappend (renderTemp t1 ctx) (renderTemp t2 ctx)
+renderTemp Empty _ = mempty
+
+-- A 'TemplateMonad' defines a function to retrieve a partial
+-- (from the file system, from a database, or using a default
+-- value).
 class Monad m => TemplateMonad m where
-  getPartial  :: FilePath -> Parser m Text
+  getPartial  :: FilePath -> m (Either String Text)
 
 instance TemplateMonad Identity where
-  getPartial s  = fail $ "Could not get partial: " <> s
+  getPartial s  = return $ Left $ "Could not get partial: " <> s
+
+instance TemplateMonad m => TemplateMonad (P.ParsecT s u m) where
+  getPartial s  = lift $ getPartial s
 
 instance TemplateMonad IO where
   getPartial s  = do
-    res <- liftIO $ tryJust (guard . isDoesNotExistError)
-              (TIO.readFile s)
+    res <- liftIO $ try (TIO.readFile s)
     case res of
-      Left _  -> fail $ "Could not get partial " ++ s
-      Right x -> return x
+      Left err -> return $ Left $
+                    "Could not get partial " ++ s ++ "\n" ++
+                        ioeGetErrorString err
+      Right x  -> return $ Right $ removeFinalNewline x
+removeFinalNewline :: Text -> Text
+removeFinalNewline t =
+  case T.unsnoc t of
+    Just (t', '\n') -> t'
+    _               -> t
 
+-- | Compile a template from a file.  IO errors will be
+-- raised as exceptions; template parsing errors result in
+-- Left return values.
+compileTemplateFile :: FilePath -> IO (Either String Template)
+compileTemplateFile templPath = do
+  templateText <- TIO.readFile templPath
+  compileTemplate templPath templateText
+
+-- | Compile a template.  The FilePath parameter is used
+-- to determine a default path and extension for partials
+-- and may be left empty if partials are not used.
 compileTemplate :: TemplateMonad m
                 => FilePath -> Text -> m (Either String Template)
 compileTemplate templPath template = do
@@ -374,10 +487,18 @@ compileTemplate templPath template = do
        Left e   -> return $ Left $ show e
        Right x  -> return $ Right x
 
-applyTemplate :: (TemplateMonad m, ToJSON a)
-              => FilePath -> Text -> a -> m (Either String Text)
-applyTemplate fp t val =
-  fmap (`renderTemplate` val) <$> compileTemplate fp t
+-- | Compile a template and apply it to a context.  This is
+-- just a convenience function composing 'compileTemplate'
+-- and 'renderTemplate'.  If a template will be rendered
+-- more than once in the same process, compile it separately
+-- for better performance.
+applyTemplate :: (TemplateMonad m, TemplateTarget a, ToContext b a)
+           => FilePath -> Text -> b -> m (Either String a)
+applyTemplate fp t val = do
+    res <- compileTemplate fp t
+    case res of
+      Left   s  -> return $ Left s
+      Right  t' -> return $ Right $ renderTemplate t' val
 
 data PState =
   PState { templatePath   :: FilePath
@@ -391,9 +512,9 @@ pTemplate = do
   ts <- many $ P.try
          (P.skipMany pComment *> (pLit <|> pDirective <|> pEscape))
   P.skipMany pComment
-  return $ Template ts
+  return $ mconcat ts
 
-pLit :: Monad m => Parser m TemplatePart
+pLit :: Monad m => Parser m Template
 pLit = do
   cs <- mconcat <$> P.many1 (P.many1 (P.satisfy (/= '$')))
   P.updateState $ \st ->
@@ -409,10 +530,11 @@ backupSourcePos n = do
   pos <- P.getPosition
   P.setPosition $ P.incSourceColumn pos (- n)
 
-pEscape :: Monad m => Parser m TemplatePart
+pEscape :: Monad m => Parser m Template
 pEscape = Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1)
 
-pDirective :: TemplateMonad m => Parser m TemplatePart
+pDirective :: TemplateMonad m
+           => Parser m Template
 pDirective = do
   res <- pConditional <|> pForLoop <|> pInterpolate <|> pBarePartial
   col <- P.sourceColumn <$> P.getPosition
@@ -435,7 +557,8 @@ pParens parser = do
   P.char ')'
   return result
 
-pConditional :: TemplateMonad m => Parser m TemplatePart
+pConditional :: TemplateMonad m
+             => Parser m Template
 pConditional = do
   v <- pEnclosed $ P.try $ P.string "if" *> pParens pVar
   -- if newline after the "if", then a newline after "endif" will be swallowed
@@ -452,43 +575,64 @@ pConditional = do
 skipEndline :: Monad m => Parser m ()
 skipEndline = P.try $ P.skipMany pSpaceOrTab <* P.char '\n'
 
-pForLoop :: TemplateMonad m => Parser m TemplatePart
+pForLoop :: TemplateMonad m
+         => Parser m Template
 pForLoop = do
   v <- pEnclosed $ P.try $ P.string "for" *> pParens pVar
   -- if newline after the "for", then a newline after "endfor" will be swallowed
   multiline <- P.option False $ skipEndline >> return True
-  contents <- pTemplate
+  contents <- changeToIt v <$> pTemplate
   sep <- P.option mempty $
            do pEnclosed (P.string "sep")
               when multiline $ P.option () skipEndline
-              pTemplate
+              changeToIt v <$> pTemplate
   pEnclosed (P.string "endfor")
   when multiline $ P.option () skipEndline
   return $ Iterate v contents sep
 
-pInterpolate :: TemplateMonad m => Parser m TemplatePart
+changeToIt :: Variable -> Template -> Template
+changeToIt v = go
+ where
+  go (Interpolate i w) = Interpolate i (reletter v w)
+  go (Conditional w t1 t2) = Conditional (reletter v w)
+        (changeToIt v t1) (changeToIt v t2)
+  go (Iterate w t1 t2) = Iterate (reletter v w)
+        (changeToIt v t1) (changeToIt v t2)
+  go (Partial t) = Partial t  -- don't reletter inside partial
+  go (Literal x) = Literal x
+  go (Concat t1 t2) = changeToIt v t1 <> changeToIt v t2
+  go Empty = mempty
+  reletter (Variable vs) (Variable ws) =
+    if vs `isPrefixOf` ws
+       then Variable ("it" : drop (length vs) ws)
+       else Variable ws
+
+pInterpolate :: TemplateMonad m
+             => Parser m Template
 pInterpolate = do
   begins <- beginsLine <$> P.getState
+  pos <- P.getPosition
   res <- pEnclosed $ do
     var <- pVar
     (P.char ':' *> pPartial (Just var))
-      <|> do separ <- pSep
-             return (Iterate var (Template [Interpolate Unindented it])
-                      separ)
+      <|> Iterate var (Interpolate Unindented it) <$> pSep
       <|> return (Interpolate Unindented var)
   ends <- P.lookAhead $ P.option False $
              True <$ P.try (P.skipMany pSpaceOrTab *> P.newline)
   case (begins && ends, res) of
     (True, Interpolate _ v)
-               -> return $ Interpolate Indented v
-    (True, Iterate v (Template [Interpolate _ v']) s)
-               -> return $ Iterate v (Template [Interpolate Indented v']) s
+               -> return $ Interpolate (Indented (P.sourceColumn pos - 1)) v
+    (True, Iterate v (Interpolate _ v') s)
+               -> return $ Iterate v
+                    ((Interpolate (Indented (P.sourceColumn pos - 1)) v')) s
     _ -> return res
 
-pBarePartial :: TemplateMonad m => Parser m TemplatePart
+pBarePartial :: TemplateMonad m
+             => Parser m Template
 pBarePartial = pEnclosed $ pPartial Nothing
 
-pPartial :: TemplateMonad m => Maybe Variable -> Parser m TemplatePart
+pPartial :: TemplateMonad m
+         => Maybe Variable -> Parser m Template
 pPartial mbvar = do
   fp <- P.many1 (P.alphaNum <|> P.oneOf ['_','-','.','/','\\'])
   P.string "()"
@@ -497,21 +641,24 @@ pPartial mbvar = do
   let fp' = case takeExtension fp of
                "" -> replaceBaseName tp fp
                _  -> replaceFileName tp fp
-  partial <- removeFinalNewline <$> getPartial fp'
+  res <- getPartial fp'
+  partial <- case res of
+               Right t' -> return t'
+               Left err -> fail err
   nesting <- partialNesting <$> P.getState
   t <- if nesting > 50
-          then return $ Template [Literal "(loop)"]
+          then return $ Literal "(loop)"
           else do
             oldInput <- P.getInput
             oldPos <- P.getPosition
             P.setPosition $ P.initialPos fp
             P.setInput partial
             P.updateState $ \st -> st{ partialNesting = nesting + 1 }
-            res <- pTemplate <* P.eof
+            res' <- pTemplate <* P.eof
             P.updateState $ \st -> st{ partialNesting = nesting }
             P.setInput oldInput
             P.setPosition oldPos
-            return res
+            return res'
   case mbvar of
     Just var -> return $ Iterate var t separ
     Nothing  -> return $ Partial t
@@ -521,13 +668,7 @@ pSep = do
     P.char '['
     xs <- P.many (P.satisfy (/= ']'))
     P.char ']'
-    return $ Template [Literal (fromString xs)]
-
-removeFinalNewline :: Text -> Text
-removeFinalNewline t =
-  case T.unsnoc t of
-    Just (t', '\n') -> t'
-    _               -> t
+    return $ Literal (fromString xs)
 
 pSpaceOrTab :: Monad m => Parser m Char
 pSpaceOrTab = P.satisfy (\c -> c == ' ' || c == '\t')
@@ -568,44 +709,12 @@ pVar = do
 pIdentPart :: Monad m => Parser m Text
 pIdentPart = P.try $ do
   first <- P.letter
-  rest <- fromString <$>
-            P.many (P.satisfy (\c -> isAlphaNum c || c == '_' || c == '-'))
-  let part = T.singleton first <> rest
+  rest <- P.many (P.satisfy (\c -> isAlphaNum c || c == '_' || c == '-'))
+  let part = first : rest
   guard $ part `notElem` reservedWords
-  return part
+  return $ fromString part
 
-reservedWords :: [Text]
+reservedWords :: [String]
 reservedWords = ["else","endif","for","endfor","sep","it"]
 
-resolveVar :: Variable -> Value -> Text
-resolveVar (Variable var') val =
-  case multiLookup var' val of
-       Just (Array vec) -> mconcat $ map (resolveVar mempty) $ V.toList vec
-       Just (String t)  -> T.stripEnd t
-       Just (Number n)  -> case floatingOrInteger n of
-                                   Left (r :: Double)   -> fromString $ show r
-                                   Right (i :: Integer) -> fromString $ show i
-       Just (Bool True) -> "true"
-       Just (Object _)  -> "true"
-       Just _           -> mempty
-       Nothing          -> mempty
-
-multiLookup :: [Text] -> Value -> Maybe Value
-multiLookup [] x = Just x
-multiLookup (v:vs) (Object o) = H.lookup v o >>= multiLookup vs
-multiLookup _ _ = Nothing
-
-replaceVar :: Variable -- ^ Field
-           -> Value -- ^ New value
-           -> Value -- ^ Old object
-           -> Value -- ^ New object
-replaceVar (Variable [])     new _          = new
-replaceVar (Variable (v:vs)) new (Object o) = Object $ H.alter f v o
-    where f Nothing  = Just new
-          f (Just x) = Just (replaceVar (Variable vs) new x)
-replaceVar _ _ old = old
-
-indent :: Int -> Text -> Text
-indent 0   = id
-indent ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
 

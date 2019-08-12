@@ -28,10 +28,11 @@ main = withTempDirectory "test" "out." $ \tmpdir -> do
 unitTests :: [TestTree]
 unitTests = [
     testCase "compile failure" $ do
-      res <- compileTemplate "" "$if(x$and$endif$"
+      (res :: Either String Template)
+        <- compileTemplate "" "$if(x$and$endif$"
       res @?= Left "\"template\" (line 1, column 6):\nunexpected \"$\"\nexpecting \".\" or \")\""
   , testCase "compile failure (keyword as variable)" $ do
-      res <- compileTemplate "" "$sep$"
+      (res :: Either String Template) <- compileTemplate "" "$sep$"
       res @?= Left "\"template\" (line 1, column 5):\nunexpected \"$\"\nexpecting letter or digit or \"()\""
   ]
 
@@ -58,7 +59,7 @@ getTest tmpdir fp = do
     let template = template' <> "\n"
     let templatePath = replaceExtension fp ".txt"
     let Just (context :: Value) = decode' . BL.fromStrict . T.encodeUtf8 $ json
-    res <- applyTemplate templatePath template (context :: Value)
+    res <- applyTemplate templatePath template context
     case res of
       Left e -> error e
       Right x -> T.writeFile actual $ json <> ".\n" <> template <> ".\n" <> x

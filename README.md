@@ -219,6 +219,11 @@ ${ it:bibentry() }
 ${ endfor }
 ```
 
+Note that the anaphoric keyword `it` must be used when
+iterating over partials.  In the above examples,
+the `bibentry` partial should contain `it.title`
+(and so on) instead of `articles.title`.
+
 Final newlines are omitted from included partials.
 
 Partials may include other partials.  If you exceed
