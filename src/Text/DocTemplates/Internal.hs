@@ -98,12 +98,17 @@ instance Monoid Variable where
 
 -- | A type to which templates can be rendered.
 class Monoid a => TemplateTarget a where
-  fromText :: Text -> a
-  isEmpty  :: a -> Bool
-  nested   :: Int -> a -> a
+  fromText           :: Text -> a      -- | Convert from text.
+  removeFinalNewline :: a -> a         -- | Remove final newline.
+  isEmpty            :: a -> Bool      -- | Renders empty.
+  nested             :: Int -> a -> a  -- | Nest (indent).
 
 instance TemplateTarget Text where
   fromText   = id
+  removeFinalNewline t =
+    case T.unsnoc t of
+      Just (t', '\n') -> t'
+      _               -> t
   isEmpty    = T.null
   nested 0   = id
   nested ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
@@ -169,7 +174,7 @@ resolveVariable' v val =
     ListVal xs    -> concatMap (resolveVariable' mempty) xs
     SimpleVal t
       | isEmpty t -> []
-      | otherwise -> [t]
+      | otherwise -> [removeFinalNewline t]
     MapVal _      -> [fromText "true"]
     NullVal       -> []
 
@@ -222,4 +227,3 @@ instance TemplateMonad Identity where
 
 instance TemplateMonad IO where
   getPartial s  = TIO.readFile s
-

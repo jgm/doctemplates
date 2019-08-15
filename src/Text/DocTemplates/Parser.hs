@@ -20,7 +20,6 @@ import qualified Text.Parsec.Pos as P
 import Control.Applicative
 import Data.String (IsString(..))
 import Data.Text (Text)
-import qualified Data.Text as T
 import Data.List (isPrefixOf)
 import System.FilePath
 import Text.DocTemplates.Internal
@@ -253,11 +252,3 @@ pIdentPart = P.try $ do
 
 reservedWords :: [String]
 reservedWords = ["else","endif","for","endfor","sep","it"]
-
-removeFinalNewline :: Text -> Text
-removeFinalNewline t =
-  case T.unsnoc t of
-    Just (t', '\n') -> t'
-    _               -> t
-
-

@@ -1,0 +1,15 @@
+{ "employee":
+  [ { "name": "John\n" }
+  , { "name": "Sara\n\n" }
+  , { "name": "Omar" }
+  ]
+}
+.
+$for(employee)$
+$employee.name$
+$ endfor $
+.
+John
+Sara
+
+Omar
