@@ -43,6 +43,7 @@ import Data.Data (Data)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Data.Text (Text)
+import qualified Data.Map as M
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
 import Data.Scientific (floatingOrInteger)
@@ -115,7 +116,7 @@ instance TemplateTarget Text where
   nested ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
 
 -- | A 'Context' defines values for template's variables.
-newtype Context a = Context { unContext :: H.HashMap Text (Val a) }
+newtype Context a = Context { unContext :: M.Map Text (Val a) }
   deriving (Show, Semigroup, Monoid, Functor)
 
 -- | A variable value.
@@ -147,7 +148,7 @@ valueToVal x =
                                 Left (r :: Double)   -> show r
                                 Right (i :: Integer) -> show i
     Bool True   -> SimpleVal $ fromText "true"
-    Object o    -> MapVal $ Context $ H.map valueToVal o
+    Object o    -> MapVal $ Context $ M.fromList $ H.toList $ H.map valueToVal o
     _           -> NullVal
 
 -- | Converts an Aeson 'Value' to a 'Context'.
@@ -161,7 +162,7 @@ valueToContext val =
 multiLookup :: [Text] -> Val a -> Val a
 multiLookup [] x = x
 multiLookup (v:vs) (MapVal (Context o)) =
-  case H.lookup v o of
+  case M.lookup v o of
     Nothing -> NullVal
     Just v' -> multiLookup vs v'
 multiLookup _ _ = NullVal
@@ -185,8 +186,8 @@ withVariable  v ctx f =
   case multiLookup (unVariable v) (MapVal ctx) of
     NullVal     -> mempty
     ListVal xs  -> map (\iterval -> f $
-                    Context $ H.insert "it" iterval $ unContext ctx) xs
-    val' -> [f $ Context $ H.insert "it" val' $ unContext ctx]
+                    Context $ M.insert "it" iterval $ unContext ctx) xs
+    val' -> [f $ Context $ M.insert "it" val' $ unContext ctx]
 
 -- | Render a compiled template in a "context" which provides
 -- values for the template's variables.
