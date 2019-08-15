@@ -21,6 +21,8 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Text.DocTemplates
+                       Text.DocTemplates.Parser
+                       Text.DocTemplates.Internal
   build-depends:       base >= 4.9 && < 5,
                        aeson,
                        text,
