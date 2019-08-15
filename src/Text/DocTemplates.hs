@@ -240,7 +240,7 @@ import qualified Data.Text.IO as TIO
 import Data.Text (Text)
 import Text.DocTemplates.Parser (compileTemplate)
 import Text.DocTemplates.Internal ( TemplateMonad(..), Context(..),
-            Val(..), ToContext(..), TemplateTarget(..), Template,
+            Val(..), ToContext(..), FromContext(..), TemplateTarget(..), Template,
             renderTemplate )
 
 -- | Compile a template from a file.  IO errors will be
