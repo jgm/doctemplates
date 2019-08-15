@@ -29,6 +29,7 @@ module Text.DocTemplates.Internal
       , Context(..)
       , Val(..)
       , ToContext(..)
+      , FromContext(..)
       , valueToContext
       , TemplateTarget(..)
       , Template(..)
@@ -139,6 +140,25 @@ instance TemplateTarget a => ToContext Value a where
 
 instance ToContext (Context a) a where
   toContext = id
+
+-- | The 'FromContext' class provides functions for extracting
+-- values from 'Val' and 'Context'.
+class FromContext a b where
+  fromVal :: Val a -> Maybe b
+  lookupContext :: Text -> Context a -> Maybe b
+  lookupContext t (Context m) = M.lookup t m >>= fromVal
+
+instance FromContext a (Val a) where
+  fromVal = Just
+
+instance FromContext a a where
+  fromVal (SimpleVal x) = Just x
+  fromVal _             = Nothing
+
+instance FromContext a [a] where
+  fromVal (SimpleVal x) = Just [x]
+  fromVal (ListVal  xs) = mapM fromVal xs
+  fromVal _             = Nothing
 
 valueToVal :: (TemplateTarget a, ToJSON b) => b -> Val a
 valueToVal x =
