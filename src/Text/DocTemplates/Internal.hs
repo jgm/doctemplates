@@ -34,11 +34,7 @@ module Text.DocTemplates.Internal
       ) where
 
 import Data.Aeson (Value(..), ToJSON(..))
-import qualified Text.Parsec as P
-import Control.Monad.Except
-import Control.Exception
 import Control.Monad.Identity
-import System.IO.Error (ioeGetErrorString)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.String (IsString(..))
@@ -219,22 +215,14 @@ renderTemp Empty _ = mempty
 -- (from the file system, from a database, or using a default
 -- value).
 class Monad m => TemplateMonad m where
-  getPartial  :: FilePath -> m (Either String Text)
+  getPartial  :: FilePath -> m Text
 
 instance TemplateMonad Identity where
-  getPartial s  = return $ Left $ "Could not get partial: " <> s
-
-instance TemplateMonad m => TemplateMonad (P.ParsecT s u m) where
-  getPartial s  = lift $ getPartial s
+  getPartial _  = return mempty
 
 instance TemplateMonad IO where
-  getPartial s  = do
-    res <- liftIO $ try (TIO.readFile s)
-    case res of
-      Left err -> return $ Left $
-                    "Could not get partial " ++ s ++ "\n" ++
-                        ioeGetErrorString err
-      Right x  -> return $ Right $ removeFinalNewline x
+  getPartial s  = removeFinalNewline <$> TIO.readFile s
+
 removeFinalNewline :: Text -> Text
 removeFinalNewline t =
   case T.unsnoc t of

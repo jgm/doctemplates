@@ -14,6 +14,7 @@ module Text.DocTemplates.Parser
 
 import Data.Char (isAlphaNum)
 import Control.Monad (guard, when)
+import Control.Monad.Trans (lift)
 import qualified Text.Parsec as P
 import qualified Text.Parsec.Pos as P
 import Control.Applicative
@@ -179,10 +180,7 @@ pPartial mbvar = do
   let fp' = case takeExtension fp of
                "" -> replaceBaseName tp fp
                _  -> replaceFileName tp fp
-  res <- getPartial fp'
-  partial <- case res of
-               Right t' -> return t'
-               Left err -> fail err
+  partial <- lift $ getPartial fp'
   nesting <- partialNesting <$> P.getState
   t <- if nesting > 50
           then return $ Literal "(loop)"
