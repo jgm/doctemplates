@@ -5,19 +5,28 @@ import Data.Text (Text)
 import Criterion.Main
 import Criterion.Types (Config (..))
 import Control.Monad.Identity
-import Data.Aeson (object, (.=))
+import Data.Aeson (object, (.=), Value)
 
 main :: IO ()
-main = defaultMainWith defaultConfig{ timeLimit = 5.0 } $ cases
+main = do
+  Right bigtextTemplate <- compileTemplate "bigtext.txt" bigtext
+  defaultMainWith defaultConfig{ timeLimit = 5.0 } $
+   [ bench "applyTemplate" $
+      nf (runIdentity . applyTemplate "bigtext" bigtext
+          :: Value -> Either String Text)
+        val
+   , bench "renderTemplate" $
+      nf (renderTemplate bigtextTemplate :: Value -> Text)
+        val
+   ]
 
 bigtext :: Text
-bigtext = "Hello there $foo$. This is a big text."
+bigtext = "Hello there $foo$. This is a big text.\n$for(bar)$$bar.baz$$endfor$"
 
-cases :: [Benchmark]
-cases =
-  [
-    bench "simple template" $
-      nf (runIdentity . applyTemplate "bigtext" bigtext
-            :: Context Text -> Either String Text)
-        (valueToContext $ object [ "foo" .= (22 :: Int) ])
-  ]
+val :: Value
+val = object [ "foo" .= (22 :: Int)
+             , "bar" .= [ object [ "baz" .= ("Hello"::Text) ]
+                        , object [ "baz" .= ("Bye"::Text) ]
+                        ]
+             ]
+
