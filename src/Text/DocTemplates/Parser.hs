@@ -1,4 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
+{- |
+   Module      : Text.DocTemplates.Parser
+   Copyright   : Copyright (C) 2009-2019 John MacFarlane
+   License     : BSD3
+
+   Maintainer  : John MacFarlane <jgm@berkeley.edu>
+   Stability   : alpha
+   Portability : portable
+-}
+
 module Text.DocTemplates.Parser
     ( compileTemplate ) where
 

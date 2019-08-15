@@ -9,6 +9,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+
+{- |
+   Module      : Text.DocTemplates.Internal
+   Copyright   : Copyright (C) 2009-2019 John MacFarlane
+   License     : BSD3
+
+   Maintainer  : John MacFarlane <jgm@berkeley.edu>
+   Stability   : alpha
+   Portability : portable
+-}
+
 module Text.DocTemplates.Internal
       ( renderTemplate
       , TemplateMonad(..)
@@ -204,7 +215,7 @@ renderTemp (Concat t1 t2) ctx =
   mappend (renderTemp t1 ctx) (renderTemp t2 ctx)
 renderTemp Empty _ = mempty
 
--- A 'TemplateMonad' defines a function to retrieve a partial
+-- | A 'TemplateMonad' defines a function to retrieve a partial
 -- (from the file system, from a database, or using a default
 -- value).
 class Monad m => TemplateMonad m where

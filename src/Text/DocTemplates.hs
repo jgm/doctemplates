@@ -1,6 +1,6 @@
 {- |
    Module      : Text.DocTemplates
-   Copyright   : Copyright (C) 2009-2016 John MacFarlane
+   Copyright   : Copyright (C) 2009-2019 John MacFarlane
    License     : BSD3
 
    Maintainer  : John MacFarlane <jgm@berkeley.edu>
