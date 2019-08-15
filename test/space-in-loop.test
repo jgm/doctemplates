@@ -1,0 +1,27 @@
+{ "employee":
+  [ { "name": { "first": "John", "last": "Doe" } }
+  , { "name": { "first": "Omar", "last": "Smith" }
+    , "salary": "30000" }
+  , { "name": { "first": "Sara", "last": "Chen" }
+    , "salary": "60000" }
+  ]
+}
+.
+$for(employee)$
+$employee.name.first$
+
+$endfor$
+---
+$for(nonexistent)$
+
+$endfor$
+---
+.
+John
+
+Omar
+
+Sara
+
+---
+---

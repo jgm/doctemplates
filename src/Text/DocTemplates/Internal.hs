@@ -177,6 +177,7 @@ withVariable :: TemplateTarget a
              => Variable -> Context a -> (Context a -> a) -> [a]
 withVariable  v ctx f =
   case multiLookup (unVariable v) (MapVal ctx) of
+    NullVal     -> mempty
     ListVal xs  -> map (\iterval -> f $
                     Context $ H.insert "it" iterval $ unContext ctx) xs
     val' -> [f $ Context $ H.insert "it" val' $ unContext ctx]
