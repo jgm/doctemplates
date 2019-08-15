@@ -9,7 +9,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveFunctor #-}
 
 {- |
    Module      : Text.DocTemplates.Internal
@@ -117,7 +116,7 @@ instance TemplateTarget Text where
 
 -- | A 'Context' defines values for template's variables.
 newtype Context a = Context { unContext :: M.Map Text (Val a) }
-  deriving (Show, Semigroup, Monoid, Functor)
+  deriving (Show, Semigroup, Monoid)
 
 -- | A variable value.
 data Val a =
@@ -125,7 +124,7 @@ data Val a =
   | ListVal    [Val a]
   | MapVal     (Context a)
   | NullVal
-  deriving (Show, Functor)
+  deriving (Show)
 
 -- | The 'ToContext' class provides automatic conversion to
 -- a 'Context'.
