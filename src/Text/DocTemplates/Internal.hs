@@ -221,11 +221,5 @@ instance TemplateMonad Identity where
   getPartial _  = return mempty
 
 instance TemplateMonad IO where
-  getPartial s  = removeFinalNewline <$> TIO.readFile s
-
-removeFinalNewline :: Text -> Text
-removeFinalNewline t =
-  case T.unsnoc t of
-    Just (t', '\n') -> t'
-    _               -> t
+  getPartial s  = TIO.readFile s
 
