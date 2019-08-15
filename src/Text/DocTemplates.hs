@@ -232,6 +232,7 @@ module Text.DocTemplates ( renderTemplate
                          , Context(..)
                          , Val(..)
                          , ToContext(..)
+                         , FromContext(..)
                          , Template  -- export opaque type
                          ) where
 
