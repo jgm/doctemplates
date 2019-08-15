@@ -200,8 +200,7 @@ renderTemp (Interpolate indented v) ctx =
 renderTemp (Conditional v ift elset) ctx =
   let res = resolveVariable v ctx
    in case res of
-        []  -> renderTemp elset ctx
-        [x] | isEmpty x -> renderTemp elset ctx
+        [] -> renderTemp elset ctx
         _  -> renderTemp ift ctx
 renderTemp (Iterate v t sep) ctx =
   let sep' = renderTemp sep ctx
