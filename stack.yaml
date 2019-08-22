@@ -1,6 +1,8 @@
 resolver: lts-13.17
 packages:
 - '.'
-extra-deps: []
+extra-deps:
+- git: https://github.com/jgm/doclayout
+  commit:  412d3b22861d41106ecc5521690f749cbe74c05e
 flags: {}
 extra-package-dbs: []

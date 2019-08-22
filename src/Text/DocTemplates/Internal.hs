@@ -41,6 +41,7 @@ import Data.Aeson (Value(..), ToJSON(..))
 import Control.Monad.Identity
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import qualified Text.DocLayout as DL
 import Data.String (IsString(..))
 import Data.Data (Data)
 import Data.Typeable (Typeable)
@@ -117,6 +118,13 @@ instance TemplateTarget Text where
   isEmpty    = T.null
   nested 0   = id
   nested ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
+
+instance IsString a => TemplateTarget (DL.Doc a) where
+  fromText = DL.text . T.unpack
+  removeFinalNewline = DL.chomp
+  nested = DL.nest
+  isEmpty = DL.isEmpty
+
 
 -- | A 'Context' defines values for template's variables.
 newtype Context a = Context { unContext :: M.Map Text (Val a) }
