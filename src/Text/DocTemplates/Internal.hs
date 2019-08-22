@@ -103,10 +103,10 @@ instance Monoid Variable where
 
 -- | A type to which templates can be rendered.
 class Monoid a => TemplateTarget a where
-  fromText           :: Text -> a      -- | Convert from text.
-  removeFinalNewline :: a -> a         -- | Remove final newline.
-  isEmpty            :: a -> Bool      -- | Renders empty.
-  nested             :: Int -> a -> a  -- | Nest (indent).
+  fromText           :: Text -> a      -- ^ Convert from text.
+  removeFinalNewline :: a -> a         -- ^ Remove final newline.
+  isEmpty            :: a -> Bool      -- ^ True if empty (null).
+  nested             :: Int -> a -> a  -- ^ Nest (indent) content.
 
 instance TemplateTarget Text where
   fromText   = id
