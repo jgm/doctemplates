@@ -3,6 +3,6 @@ packages:
 - '.'
 extra-deps:
 - git: https://github.com/jgm/doclayout
-  commit:  412d3b22861d41106ecc5521690f749cbe74c05e
+  commit: e1e4c058c3f6c9d95d588b2ad785eb93bdb1a25d
 flags: {}
 extra-package-dbs: []
