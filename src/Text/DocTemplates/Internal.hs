@@ -94,10 +94,10 @@ instance Monoid Variable where
 
 -- | A type to which templates can be rendered.
 class Monoid a => TemplateTarget a where
-  fromText           :: Text -> a      -- ^ Convert from text.
-  removeFinalNewline :: a -> a         -- ^ Remove final newline.
-  isEmpty            :: a -> Bool      -- ^ True if empty (null).
-  nested             :: Int -> a -> a  -- ^ Nest (indent) content.
+  fromText           :: Text -> a
+  removeFinalNewline :: a -> a
+  isEmpty            :: a -> Bool
+  indent             :: Int -> a -> a
 
 instance TemplateTarget Text where
   fromText   = id
@@ -106,13 +106,13 @@ instance TemplateTarget Text where
       Just (t', '\n') -> t'
       _               -> t
   isEmpty    = T.null
-  nested 0   = id
-  nested ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
+  indent 0   = id
+  indent ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
 
 instance IsString a => TemplateTarget (DL.Doc a) where
   fromText = DL.text . T.unpack
   removeFinalNewline = DL.chomp
-  nested = DL.nest
+  indent = DL.nest
   isEmpty = DL.isEmpty
 
 
@@ -223,7 +223,7 @@ renderTemp (Interpolate indented v) ctx =
    in if null vals
          then mempty
          else case indented of
-                Indented ind -> nested ind $ mconcat vals
+                Indented ind -> indent ind $ mconcat vals
                 _            -> mconcat vals
 renderTemp (Conditional v ift elset) ctx =
   let res = resolveVariable v ctx
