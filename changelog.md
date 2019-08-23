@@ -1,5 +1,52 @@
 # doctemplates
 
+## 0.4
+
+  * Split into three modules.  Main module only exports an
+    opaque version of the Template type.  Import Internal if you
+    need to manipulate a Template.
+
+  * Add Context type, parameterized on the underlying content's type.
+
+  * Add Val type.
+
+  * Add valueToContext for converting an Aeson Value to a Context.
+
+  * Make renderTemplate and applyTemplate polymorphic in both
+    context and target.  Context parameter is now any instance
+    of ToContext (instead of ToJSON).  Result is now any
+    instance of TemplateTarget.
+
+  * Change type of getPartial in TemplateMonad so it runs in the
+    TemplateMonad instance, not the Parser.  Return a simple
+    value rather than an Either; error handling can vary with
+    the monad.
+
+  * Remove TemplatePart. Template is now an algebraci data type,
+    not a list of TemplateParts.
+
+  * Add an Indented type to indicate indentation for
+    interpolated variables.
+
+  * Improve architecture, doing more at compile time.
+
+  * Depend on doclayout.  Context can be parameterized on a doclayout
+    Doc type, allowing intelligent reflowing of content.
+
+  * Remove single final newline in interpolated variable.
+
+  * Remove final newline from partial.
+
+  * Don't iterate when the variable evaluates to NullVal.
+
+  * Only indented interpolated variables if by themselves on line.
+
+  * Add Indented parameter to Interpolate constructor.
+
+  * Update documentation and haddocks.
+
+  * Add benchmark.
+
 ## 0.3.0.1
 
 * Bump lower bound on base to 4.9, drop support for ghc 7.10.
