@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {- |
    Module      : Text.DocTemplates.Parser
@@ -23,6 +24,10 @@ import Data.Text (Text)
 import Data.List (isPrefixOf)
 import System.FilePath
 import Text.DocTemplates.Internal
+#if MIN_VERSION_base(4,11,0)
+#else
+import Data.Semigroup ((<>))
+#endif
 
 -- | Compile a template.  The FilePath parameter is used
 -- to determine a default path and extension for partials

@@ -50,7 +50,6 @@ import qualified Data.Map as M
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
 import Data.Scientific (floatingOrInteger)
-import Data.Semigroup (Semigroup, (<>))
 import Data.List (intersperse)
 #if MIN_VERSION_base(4,11,0)
 #else
