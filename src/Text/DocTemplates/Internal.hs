@@ -257,4 +257,4 @@ instance TemplateMonad Identity where
   getPartial _  = return mempty
 
 instance TemplateMonad IO where
-  getPartial s  = TIO.readFile s
+  getPartial = TIO.readFile
