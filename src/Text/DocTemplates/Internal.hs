@@ -36,9 +36,11 @@ module Text.DocTemplates.Internal
       , Indented(..)
       ) where
 
+import Safe (lastMay, initDef)
 import Data.Aeson (Value(..), ToJSON(..))
 import Control.Monad.Identity
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
 import qualified Data.Text.IO as TIO
 import qualified Text.DocLayout as DL
 import Data.String (IsString(..))
@@ -50,7 +52,7 @@ import qualified Data.Map as M
 import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
 import Data.Scientific (floatingOrInteger)
-import Data.List (intersperse)
+import Data.List (intersperse, intercalate)
 #if MIN_VERSION_base(4,11,0)
 #else
 import Data.Semigroup
@@ -95,12 +97,14 @@ instance Monoid Variable where
 -- | A type to which templates can be rendered.
 class Monoid a => TemplateTarget a where
   fromText           :: Text -> a
+  toText             :: a -> Text
   removeFinalNewline :: a -> a
   isEmpty            :: a -> Bool
   indent             :: Int -> a -> a
 
 instance TemplateTarget Text where
   fromText   = id
+  toText     = id
   removeFinalNewline t =
     case T.unsnoc t of
       Just (t', '\n') -> t'
@@ -109,8 +113,32 @@ instance TemplateTarget Text where
   indent 0   = id
   indent ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
 
-instance IsString a => TemplateTarget (DL.Doc a) where
+instance TemplateTarget TL.Text where
+  fromText   = TL.fromStrict
+  toText     = TL.toStrict
+  removeFinalNewline t =
+    case TL.unsnoc t of
+      Just (t', '\n') -> t'
+      _               -> t
+  isEmpty    = TL.null
+  indent 0   = id
+  indent ind = TL.intercalate ("\n" <> TL.replicate (fromIntegral ind) " ")
+               . TL.lines
+
+instance TemplateTarget String where
+  fromText   = T.unpack
+  toText     = T.pack
+  removeFinalNewline t =
+    case lastMay t of
+      Just '\n'       -> initDef t t
+      _               -> t
+  isEmpty    = null
+  indent 0   = id
+  indent ind = intercalate ("\n" <> replicate ind ' ') . lines
+
+instance (DL.HasChars a, IsString a) => TemplateTarget (DL.Doc a) where
   fromText = DL.text . T.unpack
+  toText   = T.pack . DL.foldrChar (:) [] . DL.render Nothing
   removeFinalNewline = DL.chomp
   indent = DL.nest
   isEmpty = DL.isEmpty

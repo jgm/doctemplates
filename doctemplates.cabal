@@ -24,6 +24,7 @@ library
                        Text.DocTemplates.Parser
                        Text.DocTemplates.Internal
   build-depends:       base >= 4.9 && < 5,
+                       safe,
                        aeson,
                        text,
                        doclayout >= 0.1 && < 0.2,
