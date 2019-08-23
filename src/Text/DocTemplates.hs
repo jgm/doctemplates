@@ -7,9 +7,7 @@
    Stability   : alpha
    Portability : portable
 
-This is the templating system used by pandoc. It was formerly be a
-module in pandoc. It has been split off to make it easier to use
-independently.
+The text templating system used by pandoc.
 
 == Example of use
 
