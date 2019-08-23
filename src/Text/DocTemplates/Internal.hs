@@ -52,6 +52,10 @@ import qualified Data.Vector as V
 import Data.Scientific (floatingOrInteger)
 import Data.Semigroup (Semigroup, (<>))
 import Data.List (intersperse)
+#if MIN_VERSION_base(4,11,0)
+#else
+import Data.Semigroup
+#endif
 
 -- | Determines whether an interpolated variable is rendered with
 -- indentation.
@@ -69,37 +73,25 @@ data Template =
      | Empty
      deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
-#if MIN_VERSION_base(4,11,0)
 instance Semigroup Template where
   x <> Empty = x
   Empty <> x = x
   x <> y = Concat x y
 
 instance Monoid Template where
+  mappend = (<>)
   mempty = Empty
-#else
-instance Monoid Template where
-  mappend x Empty = x
-  mappend Empty x = x
-  mappend x y = Concat x y
-  mempty = Empty
-#endif
 
 -- | A variable which may have several parts (@foo.bar.baz@).
 newtype Variable = Variable { unVariable :: [Text] }
   deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
-#if MIN_VERSION_base(4,11,0)
 instance Semigroup Variable where
   Variable xs <> Variable ys = Variable (xs <> ys)
 
 instance Monoid Variable where
   mempty = Variable []
-#else
-instance Monoid Variable where
-  mappend (Variable xs) (Variable ys) = Variable (mappend xs ys)
-  mempty = Variable []
-#endif
+  mappend = (<>)
 
 -- | A type to which templates can be rendered.
 class Monoid a => TemplateTarget a where
