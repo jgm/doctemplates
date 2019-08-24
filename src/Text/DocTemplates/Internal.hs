@@ -140,7 +140,10 @@ instance (DL.HasChars a, IsString a) => TemplateTarget (DL.Doc a) where
   toText   = T.pack . DL.foldrChar (:) [] . DL.render Nothing
   removeFinalNewline = DL.chomp
   indent = DL.nest
-  isEmpty = DL.isEmpty
+  isEmpty (DL.Empty)      = True
+  isEmpty (DL.Text 0 _)   = True
+  isEmpty (DL.Concat x y) = isEmpty x && isEmpty y
+  isEmpty _               = False
 
 
 -- | A 'Context' defines values for template's variables.
