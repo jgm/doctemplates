@@ -156,17 +156,26 @@ data Val a =
   deriving (Show, Traversable, Foldable, Functor)
 
 -- | The 'ToContext' class provides automatic conversion to
--- a 'Context'.
+-- a 'Context' or 'Val'.
 class ToContext b a where
   toContext :: b -> Context a
+  toVal :: b -> Val a
 
 instance TemplateTarget a => ToContext Value a where
   toContext x = case fromJSON x of
                   Success y -> y
                   Error _   -> mempty
+  toVal x = case fromJSON x of
+                  Success y -> y
+                  Error _   -> NullVal
 
 instance ToContext (Context a) a where
   toContext = id
+  toVal     = MapVal
+
+instance ToContext (Val a) a where
+  toContext = mempty
+  toVal     = id
 
 -- | The 'FromContext' class provides functions for extracting
 -- values from 'Val' and 'Context'.
