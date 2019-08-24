@@ -159,6 +159,9 @@ data Val a =
 -- a 'Context' or 'Val'.
 class ToContext a b where
   toContext :: b -> Context a
+  toContext x = case toVal x of
+                  MapVal c -> c
+                  _        -> mempty
   toVal     :: b -> Val a
 
 instance ToContext a (Context a) where
@@ -166,11 +169,9 @@ instance ToContext a (Context a) where
   toVal     = MapVal
 
 instance ToContext a (Val a) where
-  toContext = mempty
   toVal     = id
 
 instance ToContext a a where
-  toContext = mempty
   toVal     = SimpleVal
 
 instance TemplateTarget a => ToContext a Value where
@@ -182,24 +183,19 @@ instance TemplateTarget a => ToContext a Value where
                   Error _   -> NullVal
 
 instance TemplateTarget a => ToContext a Bool where
-  toContext _ = mempty
   toVal True  = SimpleVal $ fromText "true"
   toVal False = NullVal
 
 instance DL.HasChars a => ToContext (DL.Doc a) a where
-  toContext = mempty
   toVal t   = SimpleVal $ DL.Text (DL.realLength t) t
 
 instance DL.HasChars a => ToContext a (DL.Doc a) where
-  toContext = mempty
   toVal d   = SimpleVal $ DL.render Nothing d
 
 instance {-# OVERLAPS #-} ToContext String String where
-  toContext = mempty
   toVal t   = SimpleVal t
 
 instance ToContext a b => ToContext a [b] where
-  toContext = mempty
   toVal     = ListVal . map toVal
 
 -- | The 'FromContext' class provides functions for extracting
