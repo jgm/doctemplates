@@ -254,7 +254,7 @@ compileTemplateFile templPath = do
 -- and 'renderTemplate'.  If a template will be rendered
 -- more than once in the same process, compile it separately
 -- for better performance.
-applyTemplate :: (TemplateMonad m, TemplateTarget a, ToContext b a)
+applyTemplate :: (TemplateMonad m, TemplateTarget a, ToContext a b)
            => FilePath -> Text -> b -> m (Either String a)
 applyTemplate fp t val = do
     res <- compileTemplate fp t

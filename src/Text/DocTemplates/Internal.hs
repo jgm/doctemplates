@@ -157,11 +157,11 @@ data Val a =
 
 -- | The 'ToContext' class provides automatic conversion to
 -- a 'Context' or 'Val'.
-class ToContext b a where
+class ToContext a b where
   toContext :: b -> Context a
   toVal :: b -> Val a
 
-instance TemplateTarget a => ToContext Value a where
+instance TemplateTarget a => ToContext a Value where
   toContext x = case fromJSON x of
                   Success y -> y
                   Error _   -> mempty
@@ -169,16 +169,16 @@ instance TemplateTarget a => ToContext Value a where
                   Success y -> y
                   Error _   -> NullVal
 
-instance TemplateTarget a => ToContext Bool a where
+instance TemplateTarget a => ToContext a Bool where
   toContext _ = mempty
   toVal True  = SimpleVal $ fromText "true"
   toVal False = NullVal
 
-instance ToContext (Context a) a where
+instance ToContext a (Context a) where
   toContext = id
   toVal     = MapVal
 
-instance ToContext (Val a) a where
+instance ToContext a (Val a) where
   toContext = mempty
   toVal     = id
 
@@ -186,7 +186,7 @@ instance ToContext a a where
   toContext = mempty
   toVal     = SimpleVal
 
-instance DL.HasChars a => ToContext a (DL.Doc a) where
+instance DL.HasChars a => ToContext (DL.Doc a) a where
   toContext = mempty
   toVal t   = SimpleVal $ DL.Text (DL.realLength t) t
 
@@ -271,7 +271,7 @@ withVariable  v ctx f =
 
 -- | Render a compiled template in a "context" which provides
 -- values for the template's variables.
-renderTemplate :: (TemplateTarget a, ToContext b a)
+renderTemplate :: (TemplateTarget a, ToContext a b)
                => Template -> b -> a
 renderTemplate t = renderTemp t . toContext
 
