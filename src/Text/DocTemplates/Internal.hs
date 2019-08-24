@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -29,7 +30,6 @@ module Text.DocTemplates.Internal
       , Val(..)
       , ToContext(..)
       , FromContext(..)
-      , valueToContext
       , TemplateTarget(..)
       , Template(..)
       , Variable(..)
@@ -37,7 +37,7 @@ module Text.DocTemplates.Internal
       ) where
 
 import Safe (lastMay, initDef)
-import Data.Aeson (Value(..), ToJSON(..))
+import Data.Aeson (Value(..), ToJSON(..), FromJSON(..), Result(..), fromJSON)
 import Control.Monad.Identity
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
@@ -162,7 +162,9 @@ class ToContext b a where
   toContext :: b -> Context a
 
 instance TemplateTarget a => ToContext Value a where
-  toContext = valueToContext
+  toContext x = case fromJSON x of
+                  Success y -> y
+                  Error _   -> mempty
 
 instance ToContext (Context a) a where
   toContext = id
@@ -186,26 +188,35 @@ instance FromContext a [a] where
   fromVal (ListVal  xs) = mapM fromVal xs
   fromVal _             = Nothing
 
-valueToVal :: (TemplateTarget a, ToJSON b) => b -> Val a
-valueToVal x =
-  case toJSON x of
-    Array vec   -> ListVal $ map valueToVal $ V.toList vec
-    String t    -> SimpleVal $ fromText t
-    Number n    -> SimpleVal $ fromText . fromString $
-                           case floatingOrInteger n of
-                                Left (r :: Double)   -> show r
-                                Right (i :: Integer) -> show i
-    Bool True   -> SimpleVal $ fromText "true"
-    Object o    -> MapVal $ Context $ M.fromList $ H.toList $ H.map valueToVal o
-    _           -> NullVal
+instance TemplateTarget a => FromJSON (Context a) where
+  parseJSON v = do
+    val <- parseJSON v
+    case val of
+      MapVal o -> return o
+      _        -> fail "Not a MapVal"
 
--- | Converts an Aeson 'Value' to a 'Context'.
-valueToContext :: (TemplateTarget a, ToJSON b) => b -> Context a
-valueToContext val =
-  case valueToVal val of
-    MapVal o -> o
-    _        -> Context mempty
+instance TemplateTarget a => FromJSON (Val a) where
+  parseJSON v =
+    case v of
+      Array vec   -> ListVal <$> mapM parseJSON (V.toList vec)
+      String t    -> return $ SimpleVal $ fromText t
+      Number n    -> return $ SimpleVal $ fromText . fromString $
+                              case floatingOrInteger n of
+                                  Left (r :: Double)   -> show r
+                                  Right (i :: Integer) -> show i
+      Bool True   -> return $ SimpleVal $ fromText "true"
+      Object o    -> MapVal . Context . M.fromList . H.toList <$>
+                       mapM parseJSON o
+      _           -> return NullVal
 
+instance TemplateTarget a => ToJSON (Context a) where
+  toJSON (Context m) = toJSON m
+
+instance TemplateTarget a => ToJSON (Val a) where
+  toJSON NullVal = Null
+  toJSON (MapVal m) = toJSON m
+  toJSON (ListVal xs) = toJSON xs
+  toJSON (SimpleVal t) = toJSON $ toText t
 
 multiLookup :: [Text] -> Val a -> Val a
 multiLookup [] x = x
