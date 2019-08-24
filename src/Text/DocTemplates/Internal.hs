@@ -194,10 +194,13 @@ instance DL.HasChars a => ToContext a (DL.Doc a) where
   toContext = mempty
   toVal d   = SimpleVal $ DL.render Nothing d
 
+instance {-# OVERLAPS #-} ToContext String String where
+  toContext = mempty
+  toVal t   = SimpleVal t
+
 instance ToContext a b => ToContext a [b] where
   toContext = mempty
   toVal     = ListVal . map toVal
-
 
 -- | The 'FromContext' class provides functions for extracting
 -- values from 'Val' and 'Context'.
