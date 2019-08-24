@@ -190,6 +190,10 @@ instance ToContext (Val a) a where
   toContext = mempty
   toVal     = id
 
+instance ToContext a a where
+  toContext = mempty
+  toVal     = SimpleVal
+
 -- | The 'FromContext' class provides functions for extracting
 -- values from 'Val' and 'Context'.
 class FromContext a b where
