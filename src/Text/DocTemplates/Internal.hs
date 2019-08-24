@@ -174,14 +174,6 @@ instance TemplateTarget a => ToContext Bool a where
   toVal True  = SimpleVal $ fromText "true"
   toVal False = NullVal
 
-instance TemplateTarget a => ToContext Text a where
-  toContext _ = mempty
-  toVal t = SimpleVal (fromText t)
-
-instance TemplateTarget a => ToContext String a where
-  toContext _ = mempty
-  toVal s = SimpleVal (fromText (T.pack s))
-
 instance ToContext (Context a) a where
   toContext = id
   toVal     = MapVal
