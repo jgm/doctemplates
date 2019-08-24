@@ -159,7 +159,19 @@ data Val a =
 -- a 'Context' or 'Val'.
 class ToContext a b where
   toContext :: b -> Context a
-  toVal :: b -> Val a
+  toVal     :: b -> Val a
+
+instance ToContext a (Context a) where
+  toContext = id
+  toVal     = MapVal
+
+instance ToContext a (Val a) where
+  toContext = mempty
+  toVal     = id
+
+instance ToContext a a where
+  toContext = mempty
+  toVal     = SimpleVal
 
 instance TemplateTarget a => ToContext a Value where
   toContext x = case fromJSON x of
@@ -174,21 +186,18 @@ instance TemplateTarget a => ToContext a Bool where
   toVal True  = SimpleVal $ fromText "true"
   toVal False = NullVal
 
-instance ToContext a (Context a) where
-  toContext = id
-  toVal     = MapVal
-
-instance ToContext a (Val a) where
-  toContext = mempty
-  toVal     = id
-
-instance ToContext a a where
-  toContext = mempty
-  toVal     = SimpleVal
-
 instance DL.HasChars a => ToContext (DL.Doc a) a where
   toContext = mempty
   toVal t   = SimpleVal $ DL.Text (DL.realLength t) t
+
+instance DL.HasChars a => ToContext a (DL.Doc a) where
+  toContext = mempty
+  toVal d   = SimpleVal $ DL.render Nothing d
+
+instance ToContext a b => ToContext a [b] where
+  toContext = mempty
+  toVal     = ListVal . map toVal
+
 
 -- | The 'FromContext' class provides functions for extracting
 -- values from 'Val' and 'Context'.
