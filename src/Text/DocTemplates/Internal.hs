@@ -186,6 +186,10 @@ instance ToContext a a where
   toContext = mempty
   toVal     = SimpleVal
 
+instance DL.HasChars a => ToContext a (DL.Doc a) where
+  toContext = mempty
+  toVal t   = SimpleVal $ DL.Text (DL.realLength t) t
+
 -- | The 'FromContext' class provides functions for extracting
 -- values from 'Val' and 'Context'.
 class FromContext a b where
