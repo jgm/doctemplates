@@ -54,7 +54,10 @@ getTest tmpdir fp = do
   let actual = tmpdir </> takeFileName fp
   return $ goldenVsFileDiff fp diff fp actual $ do
     inp <- T.readFile fp
-    let [j, template', _expected] = T.splitOn "\n.\n" inp
+    let (j, template', _expected) =
+            case T.splitOn "\n.\n" inp of
+              [x,y,z] -> (x,y,z)
+              _       -> error $ "Error parsing " ++ fp
     let j' = j <> "\n"
     let template = template' <> "\n"
     let templatePath = replaceExtension fp ".txt"
