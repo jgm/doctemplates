@@ -46,7 +46,6 @@ test-suite doctemplates-test
   main-is:             test.hs
   build-depends:       base,
                        doctemplates,
-                       mtl,
                        aeson,
                        Glob,
                        tasty,

@@ -11,10 +11,10 @@ import qualified Data.Text.Encoding as T
 import System.FilePath
 import System.IO.Temp
 import Data.Aeson
-import Control.Monad.Identity
 import System.FilePath.Glob
 import qualified Data.ByteString.Lazy as BL
 import Data.Semigroup ((<>))
+import Data.Maybe
 
 main :: IO ()
 main = withTempDirectory "test" "out." $ \tmpdir -> do
@@ -54,12 +54,13 @@ getTest tmpdir fp = do
   let actual = tmpdir </> takeFileName fp
   return $ goldenVsFileDiff fp diff fp actual $ do
     inp <- T.readFile fp
-    let [json', template', _expected] = T.splitOn "\n.\n" inp
-    let json = json' <> "\n"
+    let [j, template', _expected] = T.splitOn "\n.\n" inp
+    let j' = j <> "\n"
     let template = template' <> "\n"
     let templatePath = replaceExtension fp ".txt"
-    let Just (context :: Value) = decode' . BL.fromStrict . T.encodeUtf8 $ json
+    let (context :: Value) = fromMaybe Null $
+           decode' . BL.fromStrict . T.encodeUtf8 $ j'
     res <- applyTemplate templatePath template context
     case res of
       Left e -> error e
-      Right x -> T.writeFile actual $ json <> ".\n" <> template <> ".\n" <> x
+      Right x -> T.writeFile actual $ j' <> ".\n" <> template <> ".\n" <> x
