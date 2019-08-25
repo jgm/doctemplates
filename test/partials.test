@@ -13,6 +13,8 @@ $endfor$
 
 $employee:name()[, ]$
 
+$employee:name()$
+
 $employee:name.tex()[; ]$
 
 $boilerplate()$
@@ -22,6 +24,8 @@ $boilerplate()$
 (Sara) Chen
 
 (John) Doe, (Omar) Smith, (Sara) Chen
+
+(John) Doe(Omar) Smith(Sara) Chen
 
 \name{John}{Doe}; \name{Omar}{Smith}; \name{Sara}{Chen}
 
