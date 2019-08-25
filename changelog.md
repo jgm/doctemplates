@@ -1,5 +1,32 @@
 # doctemplates
 
+## 0.5
+
+  * Add toText method to TemplateTarget class.
+
+  * Add String and Lazy Text instances for TemplateTarget.
+
+  * Swap Parameters in ToContext (so that the first parameter
+    for both ToContext and FromContext refers to the parameter
+    of Context).
+
+  * Add toVal method to ToContext.
+
+  * Default instance definition for toContext in terms of toVal,
+    so that defining toVal is sufficient.
+
+  * Add instances for ToContext and FromContext.
+
+  * Remove valueToContext. Add ToJSON, FromJSON instances
+    for Context and Val instead.
+
+  * isEmpty: For Doc, treat `Text 0 _` as empty.
+    Also `Concat x y` when x and y are empty.
+    This differs from isEmpty in DocLayout itself, which only
+    applies to Empty.
+
+  * Code cleanup.
+
 ## 0.4
 
   * Split into three modules.  Main module only exports an
