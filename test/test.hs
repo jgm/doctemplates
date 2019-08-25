@@ -30,10 +30,10 @@ unitTests = [
     testCase "compile failure" $ do
       (res :: Either String Template)
         <- compileTemplate "" "$if(x$and$endif$"
-      res @?= Left "\"template\" (line 1, column 6):\nunexpected \"$\"\nexpecting \".\" or \")\""
+      res @?= Left "(line 1, column 6):\nunexpected \"$\"\nexpecting \".\" or \")\""
   , testCase "compile failure (keyword as variable)" $ do
-      (res :: Either String Template) <- compileTemplate "" "$sep$"
-      res @?= Left "\"template\" (line 1, column 5):\nunexpected \"$\"\nexpecting letter or digit or \"()\""
+      (res :: Either String Template) <- compileTemplate "foobar" "$sep$"
+      res @?= Left "\"foobar\" (line 1, column 5):\nunexpected \"$\"\nexpecting letter or digit or \"()\""
   ]
 
 {- The test "golden" files are structured as follows:

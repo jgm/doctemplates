@@ -38,7 +38,7 @@ compileTemplate templPath template = do
   res <- P.runParserT (pTemplate <* P.eof)
            PState{ templatePath   = templPath
                  , partialNesting = 1
-                 , beginsLine = True } "template" template
+                 , beginsLine = True } templPath template
   case res of
        Left e   -> return $ Left $ show e
        Right x  -> return $ Right x
