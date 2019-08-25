@@ -167,15 +167,24 @@ class ToContext a b where
                   _        -> mempty
   toVal     :: b -> Val a
 
-instance ToContext a (Context a) where
+instance TemplateTarget a => ToContext a (Context a) where
   toContext = id
   toVal     = MapVal
 
-instance ToContext a (Val a) where
+instance TemplateTarget a => ToContext a (Val a) where
   toVal     = id
 
-instance ToContext a a where
+instance TemplateTarget a => ToContext a a where
   toVal     = SimpleVal
+
+-- This is needed because otherwise the compiler tries to
+-- match on ToContext a [b], with a = b = Char, even though
+-- we don't have ToContext Char Char.  I don't understand why.
+instance {-# OVERLAPS #-} ToContext String String where
+  toVal t   = SimpleVal t
+
+instance ToContext a b => ToContext a [b] where
+  toVal     = ListVal . map toVal
 
 instance TemplateTarget a => ToContext a Value where
   toContext x = case fromJSON x of
@@ -189,17 +198,11 @@ instance TemplateTarget a => ToContext a Bool where
   toVal True  = SimpleVal $ fromText "true"
   toVal False = NullVal
 
-instance DL.HasChars a => ToContext (DL.Doc a) a where
+instance (TemplateTarget a, DL.HasChars a) => ToContext (DL.Doc a) a where
   toVal t   = SimpleVal $ DL.Text (DL.realLength t) t
 
-instance DL.HasChars a => ToContext a (DL.Doc a) where
+instance (TemplateTarget a, DL.HasChars a) => ToContext a (DL.Doc a) where
   toVal d   = SimpleVal $ DL.render Nothing d
-
-instance {-# OVERLAPS #-} ToContext String String where
-  toVal t   = SimpleVal t
-
-instance ToContext a b => ToContext a [b] where
-  toVal     = ListVal . map toVal
 
 -- | The 'FromContext' class provides functions for extracting
 -- values from 'Val' and 'Context'.
@@ -208,17 +211,23 @@ class FromContext a b where
   lookupContext :: Text -> Context a -> Maybe b
   lookupContext t (Context m) = M.lookup t m >>= fromVal
 
-instance FromContext a (Val a) where
+instance TemplateTarget a => FromContext a (Val a) where
   fromVal = Just
 
-instance FromContext a a where
+instance TemplateTarget a => FromContext a a where
   fromVal (SimpleVal x) = Just x
   fromVal _             = Nothing
 
-instance FromContext a [a] where
-  fromVal (SimpleVal x) = Just [x]
-  fromVal (ListVal  xs) = mapM fromVal xs
+-- This is needed because otherwise the compiler tries to
+-- match on FromContext a [b], with a = b = Char, even though
+-- we don't have FromContext Char Char.  I don't understand why.
+instance {-# OVERLAPS #-} FromContext String String where
+  fromVal (SimpleVal x) = Just x
   fromVal _             = Nothing
+
+instance FromContext a b => FromContext a [b] where
+  fromVal (ListVal  xs) = mapM fromVal xs
+  fromVal x             = sequence [fromVal x]
 
 instance TemplateTarget a => FromJSON (Context a) where
   parseJSON v = do
