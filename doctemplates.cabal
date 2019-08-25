@@ -1,5 +1,5 @@
 name:                doctemplates
-version:             0.4
+version:             0.5
 synopsis:            Pandoc-style document templates
 description:         A simple text templating system used by pandoc.
 homepage:            https://github.com/jgm/doctemplates#readme
