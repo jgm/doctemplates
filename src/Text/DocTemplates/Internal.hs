@@ -201,9 +201,6 @@ instance TemplateTarget a => ToContext a Bool where
 instance (TemplateTarget a, DL.HasChars a) => ToContext (DL.Doc a) a where
   toVal t   = SimpleVal $ DL.Text (DL.realLength t) t
 
-instance (TemplateTarget a, DL.HasChars a) => ToContext a (DL.Doc a) where
-  toVal d   = SimpleVal $ DL.render Nothing d
-
 -- | The 'FromContext' class provides functions for extracting
 -- values from 'Val' and 'Context'.
 class FromContext a b where
