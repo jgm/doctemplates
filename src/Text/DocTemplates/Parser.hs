@@ -116,7 +116,9 @@ pConditional = do
   return $ Conditional v ifContents elseContents
 
 skipEndline :: Monad m => Parser m ()
-skipEndline = P.try $ P.skipMany pSpaceOrTab <* P.char '\n'
+skipEndline = P.try $
+      (P.skipMany pSpaceOrTab <* P.char '\n')
+  <|> (P.skipMany1 pSpaceOrTab <* P.eof)
 
 pForLoop :: TemplateMonad m
          => Parser m Template
@@ -168,7 +170,7 @@ pInterpolate = do
   P.skipMany pSpaceOrTab
   closer
   ends <- P.lookAhead $ P.option False $
-             True <$ P.try (P.skipMany pSpaceOrTab *> P.newline)
+             True <$ P.try (P.skipMany pSpaceOrTab *> pNewlineOrEof)
   case (begins && ends, res) of
     (True, Interpolate _ v)
                -> return $ Interpolate (Indented (P.sourceColumn pos - 1)) v
@@ -176,6 +178,9 @@ pInterpolate = do
                -> return $ Iterate v
                     (Interpolate (Indented (P.sourceColumn pos - 1)) v') s
     _ -> return res
+
+pNewlineOrEof :: Monad m => Parser m ()
+pNewlineOrEof = () <$ P.newline <|> P.eof
 
 pBarePartial :: TemplateMonad m
              => Parser m Template
@@ -242,7 +247,7 @@ pComment = do
   -- If the comment begins in the first column, the line ending
   -- will be consumed; otherwise not.
   when (P.sourceColumn pos == 1) $ () <$ do
-    P.char '\n'
+    pNewlineOrEof
     P.updateState $ \st -> st{ beginsLine = True }
 
 pOpenDollar :: Monad m => Parser m (Parser m ())

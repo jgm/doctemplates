@@ -4,6 +4,9 @@
 
   * Improve compile error source locations with partials.
 
+  * Handle templates that don't end in newlines.  Previously
+    this caused problems in some cases.
+
 ## 0.5
 
   * Add toText method to TemplateTarget class.
