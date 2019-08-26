@@ -55,7 +55,7 @@ pTemplate :: TemplateMonad m => Parser m Template
 pTemplate = do
   P.skipMany pComment
   mconcat <$> many
-    ((pLit <|> pEscape <|> pDirective) <* P.skipMany pComment)
+    ((pLit <|> pDirective <|> pEscape) <* P.skipMany pComment)
 
 pLit :: Monad m => Parser m Template
 pLit = do
