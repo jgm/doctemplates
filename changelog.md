@@ -1,5 +1,9 @@
 # doctemplates
 
+## 0.5.0.1
+
+  * Improve compile error source locations with partials.
+
 ## 0.5
 
   * Add toText method to TemplateTarget class.
