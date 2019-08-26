@@ -32,8 +32,11 @@ unitTests = [
         <- compileTemplate "" "$if(x$and$endif$"
       res @?= Left "(line 1, column 6):\nunexpected \"$\"\nexpecting \".\" or \")\""
   , testCase "compile failure (keyword as variable)" $ do
-      (res :: Either String Template) <- compileTemplate "foobar" "$sep$"
-      res @?= Left "\"foobar\" (line 1, column 5):\nunexpected \"$\"\nexpecting letter or digit or \"()\""
+      (res :: Either String Template) <- compileTemplate "foobar.txt" "$sep$"
+      res @?= Left "\"foobar.txt\" (line 1, column 5):\nunexpected \"$\"\nexpecting letter or digit or \"()\""
+  , testCase "compile failure (error in partial)" $ do
+      (res :: Either String Template) <- compileTemplate "test/foobar.txt" "$bad()$"
+      res @?= Left "\"test/bad.txt\" (line 2, column 7):\nunexpected \"s\"\nexpecting \"$\""
   ]
 
 {- The test "golden" files are structured as follows:

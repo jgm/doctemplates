@@ -53,14 +53,13 @@ type Parser = P.ParsecT Text PState
 
 pTemplate :: TemplateMonad m => Parser m Template
 pTemplate = do
-  ts <- many $ P.try
-         (P.skipMany pComment *> (pLit <|> pDirective <|> pEscape))
   P.skipMany pComment
-  return $ mconcat ts
+  mconcat <$> many
+    ((pLit <|> pEscape <|> pDirective) <* P.skipMany pComment)
 
 pLit :: Monad m => Parser m Template
 pLit = do
-  cs <- mconcat <$> P.many1 (P.many1 (P.satisfy (/= '$')))
+  cs <- P.many1 (P.satisfy (/= '$'))
   P.updateState $ \st ->
     st{ beginsLine =
           case dropWhile (\c -> c == ' ' || c == '\t') $ reverse cs of
@@ -156,11 +155,18 @@ pInterpolate :: TemplateMonad m
 pInterpolate = do
   begins <- beginsLine <$> P.getState
   pos <- P.getPosition
-  res <- pEnclosed $ do
-    var <- pVar
-    (P.char ':' *> pPartial (Just var))
+  -- we don't used pEnclosed here, to get better error messages:
+  (closer, var) <- P.try $ do
+    cl <- pOpen
+    P.skipMany pSpaceOrTab
+    v <- pVar
+    P.notFollowedBy (P.char '(') -- bare partial
+    return (cl, v)
+  res <- (P.char ':' *> (pPartialName >>= pPartial (Just var)))
       <|> Iterate var (Interpolate Unindented (Variable ["it"])) <$> pSep
       <|> return (Interpolate Unindented var)
+  P.skipMany pSpaceOrTab
+  closer
   ends <- P.lookAhead $ P.option False $
              True <$ P.try (P.skipMany pSpaceOrTab *> P.newline)
   case (begins && ends, res) of
@@ -173,13 +179,27 @@ pInterpolate = do
 
 pBarePartial :: TemplateMonad m
              => Parser m Template
-pBarePartial = pEnclosed $ pPartial Nothing
+pBarePartial = do
+  (closer, fp) <- P.try $ do
+    closer <- pOpen
+    P.skipMany pSpaceOrTab
+    fp <- pPartialName
+    return (closer, fp)
+  res <- pPartial Nothing fp
+  P.skipMany pSpaceOrTab
+  closer
+  return res
 
-pPartial :: TemplateMonad m
-         => Maybe Variable -> Parser m Template
-pPartial mbvar = do
+pPartialName :: TemplateMonad m
+             => Parser m FilePath
+pPartialName = P.try $ do
   fp <- P.many1 (P.alphaNum <|> P.oneOf ['_','-','.','/','\\'])
   P.string "()"
+  return fp
+
+pPartial :: TemplateMonad m
+         => Maybe Variable -> FilePath -> Parser m Template
+pPartial mbvar fp = do
   separ <- P.option mempty pSep
   tp <- templatePath <$> P.getState
   let fp' = case takeExtension fp of
@@ -192,7 +212,7 @@ pPartial mbvar = do
           else do
             oldInput <- P.getInput
             oldPos <- P.getPosition
-            P.setPosition $ P.initialPos fp
+            P.setPosition $ P.initialPos fp'
             P.setInput partial
             P.updateState $ \st -> st{ partialNesting = nesting + 1 }
             res' <- pTemplate <* P.eof
