@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 import Text.DocTemplates
+import qualified Data.Text as T
 import Data.Text (Text)
 import Criterion.Main
 import Criterion.Types (Config (..))
@@ -21,7 +22,9 @@ main = do
    ]
 
 bigtext :: Text
-bigtext = "Hello there $foo$. This is a big text.\n$for(bar)$$bar.baz$$endfor$"
+bigtext = T.replicate 150 $
+  "Hello there $foo$. This is a big text.\n$for(bar)$$bar.baz$$endfor$\n"
+  <> "$if(foo)$Hi $foo$.$endif$\n"
 
 val :: Value
 val = object [ "foo" .= (22 :: Int)
