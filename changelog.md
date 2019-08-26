@@ -1,6 +1,8 @@
 # doctemplates
 
-## 0.5.0.1
+## 0.5.1
+
+  * Add elseif keyword.
 
   * Improve compile error source locations with partials.
 
