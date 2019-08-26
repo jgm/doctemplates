@@ -1,0 +1,30 @@
+{ "foo": 1,
+  "bar": null,
+  "baz": ["a", "b"],
+  "bim": { "zub": "sim" },
+  "sup": [ { "biz": "qux" }
+         , { "sax": "" }
+         ]
+}
+.
+$if(sup.sax)$
+XXX
+$elseif(baz)$
+YYY
+$else$
+ZZZ
+$endif$
+
+$if(sup.sax)$
+XXX
+$elseif(baz.nonexist)$
+YYY
+$elseif(sup.sax)$
+ZZZ
+$else$
+WWW
+$endif$
+.
+YYY
+
+WWW

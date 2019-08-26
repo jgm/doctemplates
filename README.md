@@ -1,8 +1,6 @@
 # doctemplates
 
-This is the templating system used by pandoc.  It was formerly
-a module in pandoc. It has been split off to make it easier
-to use independently.
+This is the templating system used by pandoc.
 
 ## Example of use
 
@@ -133,8 +131,32 @@ no foo!
 ${endif}
 ```
 
-Conditional keywords should not be indented, or unexpected spacing
-problems may occur.
+The keyword `elseif` may be used to simplify complex nested
+conditionals.  Thus
+
+```
+$if(foo)$
+XXX
+$elseif(bar)$
+YYY
+$else$
+ZZZ
+$endif$
+```
+
+is equivalent to
+
+```
+$if(foo)$
+XXX
+$else$
+$if(bar)$
+YYY
+$else$
+ZZZ
+$endif$
+$endif$
+```
 
 ## For loops
 

@@ -107,12 +107,23 @@ pConditional = do
   -- if newline after the "if", then a newline after "endif" will be swallowed
   multiline <- P.option False (True <$ skipEndline)
   ifContents <- pTemplate
-  elseContents <- P.option mempty $
-                    do pEnclosed (P.string "else")
-                       when multiline $ P.option () skipEndline
-                       pTemplate
+  elseContents <- P.option mempty (pElse multiline <|> pElseIf)
   pEnclosed (P.string "endif")
   when multiline $ P.option () skipEndline
+  return $ Conditional v ifContents elseContents
+
+pElse :: TemplateMonad m => Bool -> Parser m Template
+pElse multiline = do
+  pEnclosed (P.string "else")
+  when multiline $ P.option () skipEndline
+  pTemplate
+
+pElseIf :: TemplateMonad m => Parser m Template
+pElseIf = do
+  v <- pEnclosed $ P.try $ P.string "elseif" *> pParens pVar
+  multiline <- P.option False (True <$ skipEndline)
+  ifContents <- pTemplate
+  elseContents <- P.option mempty (pElse multiline <|> pElseIf)
   return $ Conditional v ifContents elseContents
 
 skipEndline :: Monad m => Parser m ()
@@ -281,4 +292,4 @@ pIdentPart = P.try $ do
   return $ fromString part
 
 reservedWords :: [String]
-reservedWords = ["else","endif","for","endfor","sep","it"]
+reservedWords = ["if","else","endif","elseif","for","endfor","sep","it"]

@@ -91,9 +91,8 @@ value of the @salary@ field of the object that is the value of the
     true, and as the empty string if false.
 -   Every other value will be rendered as the empty string.
 
-The value of a variable that occurs by itself on a line
-will be indented to the same level as the opening delimiter of
-the variable.
+The value of a variable that occurs by itself on a line will be indented
+to the same level as the opening delimiter of the variable.
 
 == Conditionals
 
@@ -128,8 +127,28 @@ counts as a true value.) Examples:
 > no foo!
 > ${endif}
 
-Conditional keywords should not be indented, or unexpected spacing
-problems may occur.
+The keyword @elseif@ may be used to simplify complex nested
+conditionals. Thus
+
+> $if(foo)$
+> XXX
+> $elseif(bar)$
+> YYY
+> $else$
+> ZZZ
+> $endif$
+
+is equivalent to
+
+> $if(foo)$
+> XXX
+> $else$
+> $if(bar)$
+> YYY
+> $else$
+> ZZZ
+> $endif$
+> $endif$
 
 == For loops
 
@@ -197,10 +216,9 @@ equivalent to
 > ${ it:bibentry() }
 > ${ endfor }
 
-Note that the anaphoric keyword @it@ must be used when
-iterating over partials.  In the above examples,
-the @bibentry@ partial should contain @it.title@
-(and so on) instead of @articles.title@.
+Note that the anaphoric keyword @it@ must be used when iterating over
+partials. In the above examples, the @bibentry@ partial should contain
+@it.title@ (and so on) instead of @articles.title@.
 
 Final newlines are omitted from included partials.
 
