@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+import Text.DocLayout (render)
 import Text.DocTemplates
 import Test.Tasty.Golden
 import Test.Tasty
@@ -39,6 +40,14 @@ unitTests = [
   , testCase "comment with no newline" $ do
       res <- compileTemplate "foo" "$-- hi"
       res @?= Right mempty
+  , testCase "breakable" $ do
+      templ <- compileTemplate "foo" "not breakable and $breakable$ this is breakable\nok? $foo$$endbreakable$"
+      let res :: T.Text
+          res = case templ of
+                  Right t -> render (Just 10)
+                   (renderTemplate t (object ["foo" .= ("42" :: T.Text)]))
+                  Left e  -> T.pack e
+      res @?= "not breakable and \nthis is\nbreakable\nok? 42"
   ]
 
 {- The test "golden" files are structured as follows:

@@ -70,6 +70,7 @@ data Template =
      | Partial Template
      | Literal Text
      | Concat Template Template
+     | BreakingSpace
      | Empty
      deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
@@ -100,6 +101,7 @@ class Monoid a => TemplateTarget a where
   removeFinalNewline :: a -> a
   isEmpty            :: a -> Bool
   indent             :: Int -> a -> a
+  breakingSpace      :: a
 
 instance TemplateTarget Text where
   fromText   = id
@@ -111,6 +113,7 @@ instance TemplateTarget Text where
   isEmpty    = T.null
   indent 0   = id
   indent ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
+  breakingSpace = " "
 
 instance TemplateTarget TL.Text where
   fromText   = TL.fromStrict
@@ -123,6 +126,7 @@ instance TemplateTarget TL.Text where
   indent 0   = id
   indent ind = TL.intercalate ("\n" <> TL.replicate (fromIntegral ind) " ")
                . TL.lines
+  breakingSpace = " "
 
 instance TemplateTarget String where
   fromText   = T.unpack
@@ -134,8 +138,10 @@ instance TemplateTarget String where
   isEmpty    = null
   indent 0   = id
   indent ind = intercalate ("\n" <> replicate ind ' ') . lines
+  breakingSpace = " "
 
-instance (DL.HasChars a, IsString a) => TemplateTarget (DL.Doc a) where
+instance (DL.HasChars a, IsString a, Eq a)
+    => TemplateTarget (DL.Doc a) where
   fromText = DL.text . T.unpack
   toText   = T.pack . DL.foldrChar (:) [] . DL.render Nothing
   removeFinalNewline = DL.chomp
@@ -144,7 +150,7 @@ instance (DL.HasChars a, IsString a) => TemplateTarget (DL.Doc a) where
   isEmpty (DL.Text 0 _)   = True
   isEmpty (DL.Concat x y) = isEmpty x && isEmpty y
   isEmpty _               = False
-
+  breakingSpace  = DL.space
 
 -- | A 'Context' defines values for template's variables.
 newtype Context a = Context { unContext :: M.Map Text (Val a) }
@@ -295,6 +301,7 @@ renderTemplate t = renderTemp t . toContext
 renderTemp :: forall a . TemplateTarget a
            => Template -> Context a -> a
 renderTemp (Literal t) _ = fromText t
+renderTemp BreakingSpace _ = breakingSpace
 renderTemp (Interpolate indented v) ctx =
   let vals = resolveVariable v ctx
    in if null vals

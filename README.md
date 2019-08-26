@@ -281,3 +281,19 @@ The separator in this case is literal and (unlike with `sep`
 in an explicit `for` loop) cannot contain interpolated
 variables or other template directives.
 
+## Breakable spaces
+
+When rendering to a `Doc`, a distinction can be made between
+breakable and unbreakable spaces.  Normally, spaces in the
+template itself (as opposed to values of the interpolated
+variables) are not breakable, but they can be made breakable
+in part of the template by using the `breakable` keyword.
+
+```
+$breakable$This long line may break if the document is rendered
+with a short line length.$endbreakable$
+```
+
+The `breakable` keyword has no effect when rendering to `Text`
+or `String`.
+

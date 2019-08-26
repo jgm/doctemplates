@@ -38,7 +38,8 @@ compileTemplate templPath template = do
   res <- P.runParserT (pTemplate <* P.eof)
            PState{ templatePath   = templPath
                  , partialNesting = 1
-                 , beginsLine = True } templPath template
+                 , beginsLine = True
+                 , breakingSpaces = False } templPath template
   case res of
        Left e   -> return $ Left $ show e
        Right x  -> return $ Right x
@@ -47,7 +48,8 @@ compileTemplate templPath template = do
 data PState =
   PState { templatePath   :: FilePath
          , partialNesting :: Int
-         , beginsLine     :: Bool }
+         , beginsLine     :: Bool
+         , breakingSpaces :: Bool }
 
 type Parser = P.ParsecT Text PState
 
@@ -66,7 +68,19 @@ pLit = do
             ('\n':_) -> True
             []       -> beginsLine st
             _        -> False }
-  return $ Literal $ fromString cs
+  breakspaces <- breakingSpaces <$> P.getState
+  if breakspaces
+     then return $ toBreakable cs
+     else return $ Literal $ fromString cs
+
+toBreakable :: String -> Template
+toBreakable [] = Empty
+toBreakable xs =
+  case break (==' ') xs of
+    ([], []) -> Empty
+    ([], zs) -> BreakingSpace <> toBreakable (dropWhile (==' ') zs)
+    (ys, []) -> Literal (fromString ys)
+    (ys, zs) -> Literal (fromString ys) <> toBreakable zs
 
 backupSourcePos :: Monad m => Int -> Parser m ()
 backupSourcePos n = do
@@ -79,7 +93,8 @@ pEscape = Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1)
 pDirective :: TemplateMonad m
            => Parser m Template
 pDirective = do
-  res <- pConditional <|> pForLoop <|> pInterpolate <|> pBarePartial
+  res <- pConditional <|> pForLoop <|> pBreakable <|>
+         pInterpolate <|> pBarePartial
   col <- P.sourceColumn <$> P.getPosition
   P.updateState $ \st -> st{ beginsLine = col == 1 }
   return res
@@ -131,8 +146,17 @@ skipEndline = P.try $
       (P.skipMany pSpaceOrTab <* P.char '\n')
   <|> (P.skipMany1 pSpaceOrTab <* P.eof)
 
-pForLoop :: TemplateMonad m
-         => Parser m Template
+pBreakable :: TemplateMonad m => Parser m Template
+pBreakable = do
+  pEnclosed $ P.string "breakable"
+  oldBreakingSpaces <- breakingSpaces <$> P.getState
+  P.modifyState $ \st -> st{ breakingSpaces = True }
+  res <- pTemplate
+  P.modifyState $ \st -> st{ breakingSpaces = oldBreakingSpaces }
+  pEnclosed $ P.string "endbreakable"
+  return res
+
+pForLoop :: TemplateMonad m => Parser m Template
 pForLoop = do
   v <- pEnclosed $ P.try $ P.string "for" *> pParens pVar
   -- if newline after the "for", then a newline after "endfor" will be swallowed
@@ -154,10 +178,9 @@ changeToIt v = go
         (changeToIt v t1) (changeToIt v t2)
   go (Iterate w t1 t2) = Iterate (reletter v w)
         (changeToIt v t1) (changeToIt v t2)
-  go (Partial t) = Partial t  -- don't reletter inside partial
-  go (Literal x) = Literal x
   go (Concat t1 t2) = changeToIt v t1 <> changeToIt v t2
-  go Empty = mempty
+  go (Partial t) = Partial t  -- don't reletter inside partial
+  go x = x
   reletter (Variable vs) (Variable ws) =
     if vs `isPrefixOf` ws
        then Variable ("it" : drop (length vs) ws)
@@ -292,4 +315,5 @@ pIdentPart = P.try $ do
   return $ fromString part
 
 reservedWords :: [String]
-reservedWords = ["if","else","endif","elseif","for","endfor","sep","it"]
+reservedWords = ["if","else","endif","elseif","for","endfor","sep","it",
+                "breakable","endbreakable"]
