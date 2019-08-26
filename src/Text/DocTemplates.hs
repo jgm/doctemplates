@@ -7,7 +7,20 @@
    Stability   : alpha
    Portability : portable
 
-The text templating system used by pandoc.
+This is the text templating system used by pandoc. Its basic function is
+to fill holes in a template in a 'Context' that provides values for
+variables. Control structures are provided to test that a variable has a
+non-blank value and to iterate over the items of a list. Partials—that
+is, subtemplates defined in different files—are also supported.
+
+Templates may be rendered to lazy or strict 'Text', 'String', or a
+doclayout 'Doc'. (Using a 'Doc' allows rendered documents to wrap
+flexibly on breaking spaces.) A 'Context' can be constructed manually or
+an aeson 'Value' may be used.
+
+Unlike the various HTML-centered template engines, doctemplates is
+output-format agnostic, so no automatic escaping is done on interpolated
+values. Values are assumed to be escaped properly in the Context.
 
 == Example of use
 
