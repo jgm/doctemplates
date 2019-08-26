@@ -6,6 +6,7 @@ import Data.Text (Text)
 import Criterion.Main
 import Criterion.Types (Config (..))
 import Control.Monad.Identity
+import Data.Semigroup ((<>))
 import Data.Aeson (object, (.=), Value)
 
 main :: IO ()
