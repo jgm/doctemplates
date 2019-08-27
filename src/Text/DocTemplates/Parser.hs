@@ -173,13 +173,14 @@ pForLoop = do
 changeToIt :: Variable -> Template -> Template
 changeToIt v = go
  where
-  go (Interpolate i w) = Interpolate i (reletter v w)
+  go (Interpolate w) = Interpolate (reletter v w)
   go (Conditional w t1 t2) = Conditional (reletter v w)
         (changeToIt v t1) (changeToIt v t2)
   go (Iterate w t1 t2) = Iterate (reletter v w)
         (changeToIt v t1) (changeToIt v t2)
   go (Concat t1 t2) = changeToIt v t1 <> changeToIt v t2
   go (Partial t) = Partial t  -- don't reletter inside partial
+  go (Nested n t) = Nested n (go t)
   go x = x
   reletter (Variable vs) (Variable ws) =
     if vs `isPrefixOf` ws
@@ -199,18 +200,19 @@ pInterpolate = do
     P.notFollowedBy (P.char '(') -- bare partial
     return (cl, v)
   res <- (P.char ':' *> (pPartialName >>= pPartial (Just var)))
-      <|> Iterate var (Interpolate Unindented (Variable ["it"])) <$> pSep
-      <|> return (Interpolate Unindented var)
+      <|> Iterate var (Interpolate (Variable ["it"])) <$> pSep
+      <|> return (Interpolate var)
   P.skipMany pSpaceOrTab
   closer
   ends <- P.lookAhead $ P.option False $
              True <$ P.try (P.skipMany pSpaceOrTab *> pNewlineOrEof)
   case (begins && ends, res) of
-    (True, Interpolate _ v)
-               -> return $ Interpolate (Indented (P.sourceColumn pos - 1)) v
-    (True, Iterate v (Interpolate _ v') s)
-               -> return $ Iterate v
-                    (Interpolate (Indented (P.sourceColumn pos - 1)) v') s
+    (True, Interpolate v)
+               -> return $ Nested (P.sourceColumn pos - 1)
+                         $ Interpolate v
+    (True, Iterate v (Interpolate v') s)
+               -> return $ Nested (P.sourceColumn pos - 1)
+                         $ Iterate v (Interpolate v') s
     _ -> return res
 
 pNewlineOrEof :: Monad m => Parser m ()

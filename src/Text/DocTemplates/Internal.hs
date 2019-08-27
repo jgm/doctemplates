@@ -32,7 +32,6 @@ module Text.DocTemplates.Internal
       , TemplateTarget(..)
       , Template(..)
       , Variable(..)
-      , Indented(..)
       ) where
 
 import Safe (lastMay, initDef)
@@ -57,16 +56,12 @@ import Data.List (intersperse, intercalate)
 import Data.Semigroup
 #endif
 
--- | Determines whether an interpolated variable is rendered with
--- indentation.
-data Indented = Indented !Int | Unindented
-     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
-
 -- | A template.
 data Template =
-       Interpolate Indented Variable
+       Interpolate Variable
      | Conditional Variable Template Template
      | Iterate Variable Template Template
+     | Nested Int Template
      | Partial Template
      | Literal Text
      | Concat Template Template
@@ -302,13 +297,7 @@ renderTemp :: forall a . TemplateTarget a
            => Template -> Context a -> a
 renderTemp (Literal t) _ = fromText t
 renderTemp BreakingSpace _ = breakingSpace
-renderTemp (Interpolate indented v) ctx =
-  let vals = resolveVariable v ctx
-   in if null vals
-         then mempty
-         else case indented of
-                Indented ind -> indent ind $ mconcat vals
-                _            -> mconcat vals
+renderTemp (Interpolate v) ctx = mconcat $ resolveVariable v ctx
 renderTemp (Conditional v ift elset) ctx =
   let res = resolveVariable v ctx
    in case res of
@@ -317,6 +306,7 @@ renderTemp (Conditional v ift elset) ctx =
 renderTemp (Iterate v t sep) ctx =
   let sep' = renderTemp sep ctx
    in mconcat . intersperse sep' $ withVariable v ctx (renderTemp t)
+renderTemp (Nested n t) ctx = indent n $ renderTemp t ctx
 renderTemp (Partial t) ctx = renderTemp t ctx
 renderTemp (Concat t1 t2) ctx =
   mappend (renderTemp t1 ctx) (renderTemp t2 ctx)
