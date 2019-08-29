@@ -38,6 +38,7 @@ compileTemplate templPath template = do
   res <- P.runParserT (pTemplate <* P.eof)
            PState{ templatePath   = templPath
                  , partialNesting = 1
+                 , indentLevel = 0
                  , beginsLine = True
                  , breakingSpaces = False } templPath template
   case res of
@@ -48,6 +49,7 @@ compileTemplate templPath template = do
 data PState =
   PState { templatePath   :: FilePath
          , partialNesting :: Int
+         , indentLevel    :: Int
          , beginsLine     :: Bool
          , breakingSpaces :: Bool }
 
@@ -57,17 +59,23 @@ pTemplate :: TemplateMonad m => Parser m Template
 pTemplate = do
   P.skipMany pComment
   mconcat <$> many
-    ((pLit <|> pDirective <|> pEscape) <* P.skipMany pComment)
+    ((pLit <|> pNewline <|> pDirective <|> pEscape) <* P.skipMany pComment)
+
+pNewline :: Monad m => Parser m Template
+pNewline = do
+  nls <- P.string "\n" <|> P.string "\r" <|> P.string "\r\n"
+  breakspaces <- breakingSpaces <$> P.getState
+  return $
+   if breakspaces
+      then BreakingSpace
+      else Literal $ fromString nls
 
 pLit :: Monad m => Parser m Template
 pLit = do
-  cs <- P.many1 (P.satisfy (/= '$'))
-  P.updateState $ \st ->
-    st{ beginsLine =
-          case dropWhile (\c -> c == ' ' || c == '\t') $ reverse cs of
-            ('\n':_) -> True
-            []       -> beginsLine st
-            _        -> False }
+  col <- P.sourceColumn <$> P.getPosition
+  cs <- P.many1 (P.satisfy (\c -> c /= '$' && c /= '\n' && c /= '\r'))
+  P.updateState $ \st -> st{ beginsLine = col == 1 &&
+                               all isSpacy cs }
   breakspaces <- breakingSpaces <$> P.getState
   if breakspaces
      then return $ toBreakable cs
@@ -81,12 +89,13 @@ toBreakable xs =
     ([], zs) -> BreakingSpace <> toBreakable (dropWhile isSpacy zs)
     (ys, []) -> Literal (fromString ys)
     (ys, zs) -> Literal (fromString ys) <> toBreakable zs
- where
-  isSpacy ' '  = True
-  isSpacy '\n' = True
-  isSpacy '\r' = True
-  isSpacy '\t' = True
-  isSpacy _    = False
+
+isSpacy :: Char -> Bool
+isSpacy ' '  = True
+isSpacy '\n' = True
+isSpacy '\r' = True
+isSpacy '\t' = True
+isSpacy _    = False
 
 backupSourcePos :: Monad m => Int -> Parser m ()
 backupSourcePos n = do
