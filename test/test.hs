@@ -51,6 +51,14 @@ unitTests = [
   , testCase "nest" $ do
       res <- applyTemplate "foo" "- $+nest$aaa\nbbb$-nest$" (object [])
       res @?= Right ("- aaa\n  bbb" :: T.Text)
+  , testCase "implicitly closed nest" $ do
+      templ <- compileTemplate "foo" "$if(foo)$\n- $+nest$a\nb$endif$"
+      let res :: T.Text
+          res = case templ of
+                  Right t -> render (Just 10)
+                   (renderTemplate t (object ["foo" .= ("42" :: T.Text)]))
+                  Left e  -> T.pack e
+      res @?= "- a\n  b"
   ]
 
 {- The test "golden" files are structured as follows:

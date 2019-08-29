@@ -157,7 +157,7 @@ pNest = do
   col <- P.sourceColumn <$> P.getPosition
   pEnclosed $ P.string "+nest"
   t <- pTemplate
-  pEnclosed $ P.string "-nest"
+  P.optional $ pEnclosed $ P.string "-nest"
   return $ Nested (col - 1) t
 
 pReflow :: TemplateMonad m => Parser m Template
@@ -167,7 +167,7 @@ pReflow = do
   P.modifyState $ \st -> st{ breakingSpaces = True }
   res <- pTemplate
   P.modifyState $ \st -> st{ breakingSpaces = oldBreakingSpaces }
-  pEnclosed $ P.string "-reflow"
+  P.optional $ pEnclosed $ P.string "-reflow"
   return res
 
 pForLoop :: TemplateMonad m => Parser m Template
