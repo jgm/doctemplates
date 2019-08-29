@@ -287,13 +287,32 @@ When rendering to a `Doc`, a distinction can be made between
 breakable and unbreakable spaces.  Normally, spaces in the
 template itself (as opposed to values of the interpolated
 variables) are not breakable, but they can be made breakable
-in part of the template by using the `breakable` keyword.
+in part of the template by using the `+reflow` keyword (ended
+with `-reflow`).
 
 ```
-$breakable$This long line may break if the document is rendered
-with a short line length.$endbreakable$
+${+reflow}This long line may break if the document is rendered
+with a short line length.${-reflow}
 ```
 
-The `breakable` keyword has no effect when rendering to `Text`
+The `+` keyword has no effect when rendering to `Text`
 or `String`.
 
+## Nesting
+
+As noted above, the value of a variable that occurs by itself on
+a line will be indented to the same level as the opening
+delimiter of the variable.
+
+In addition, any part of a template can be marked explicitly for
+indented rendering, using the `+nest` keyword (o start nesting at
+the column where it appears) and `-nest` to stop nesting.
+
+Example:
+
+```
+$for(article)$
+- $+nest$$article.author$, "$article.title$," in $article.book$
+  ($article.year$).$-nest$
+$endfor$
+```

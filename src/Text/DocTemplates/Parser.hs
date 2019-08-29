@@ -76,11 +76,17 @@ pLit = do
 toBreakable :: String -> Template
 toBreakable [] = Empty
 toBreakable xs =
-  case break (==' ') xs of
+  case break isSpacy xs of
     ([], []) -> Empty
-    ([], zs) -> BreakingSpace <> toBreakable (dropWhile (==' ') zs)
+    ([], zs) -> BreakingSpace <> toBreakable (dropWhile isSpacy zs)
     (ys, []) -> Literal (fromString ys)
     (ys, zs) -> Literal (fromString ys) <> toBreakable zs
+ where
+  isSpacy ' '  = True
+  isSpacy '\n' = True
+  isSpacy '\r' = True
+  isSpacy '\t' = True
+  isSpacy _    = False
 
 backupSourcePos :: Monad m => Int -> Parser m ()
 backupSourcePos n = do
@@ -93,7 +99,7 @@ pEscape = Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1)
 pDirective :: TemplateMonad m
            => Parser m Template
 pDirective = do
-  res <- pConditional <|> pForLoop <|> pBreakable <|>
+  res <- pConditional <|> pForLoop <|> pReflow <|> pNest <|>
          pInterpolate <|> pBarePartial
   col <- P.sourceColumn <$> P.getPosition
   P.updateState $ \st -> st{ beginsLine = col == 1 }
@@ -146,14 +152,22 @@ skipEndline = P.try $
       (P.skipMany pSpaceOrTab <* P.char '\n')
   <|> (P.skipMany1 pSpaceOrTab <* P.eof)
 
-pBreakable :: TemplateMonad m => Parser m Template
-pBreakable = do
-  pEnclosed $ P.string "breakable"
+pNest :: TemplateMonad m => Parser m Template
+pNest = do
+  col <- P.sourceColumn <$> P.getPosition
+  pEnclosed $ P.string "+nest"
+  t <- pTemplate
+  pEnclosed $ P.string "-nest"
+  return $ Nested (col - 1) t
+
+pReflow :: TemplateMonad m => Parser m Template
+pReflow = do
+  pEnclosed $ P.string "+reflow"
   oldBreakingSpaces <- breakingSpaces <$> P.getState
   P.modifyState $ \st -> st{ breakingSpaces = True }
   res <- pTemplate
   P.modifyState $ \st -> st{ breakingSpaces = oldBreakingSpaces }
-  pEnclosed $ P.string "endbreakable"
+  pEnclosed $ P.string "-reflow"
   return res
 
 pForLoop :: TemplateMonad m => Parser m Template
@@ -317,5 +331,4 @@ pIdentPart = P.try $ do
   return $ fromString part
 
 reservedWords :: [String]
-reservedWords = ["if","else","endif","elseif","for","endfor","sep","it",
-                "breakable","endbreakable"]
+reservedWords = ["if","else","endif","elseif","for","endfor","sep","it"]

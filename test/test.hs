@@ -40,14 +40,17 @@ unitTests = [
   , testCase "comment with no newline" $ do
       res <- compileTemplate "foo" "$-- hi"
       res @?= Right mempty
-  , testCase "breakable" $ do
-      templ <- compileTemplate "foo" "not breakable and $breakable$ this is breakable\nok? $foo$$endbreakable$"
+  , testCase "reflow" $ do
+      templ <- compileTemplate "foo" "not breakable and $+reflow$ this is breakable\nok? $foo$$-reflow$"
       let res :: T.Text
           res = case templ of
                   Right t -> render (Just 10)
                    (renderTemplate t (object ["foo" .= ("42" :: T.Text)]))
                   Left e  -> T.pack e
       res @?= "not breakable and \nthis is\nbreakable\nok? 42"
+  , testCase "nest" $ do
+      res <- applyTemplate "foo" "- $+nest$aaa\nbbb$-nest$" (object [])
+      res @?= Right ("- aaa\n  bbb" :: T.Text)
   ]
 
 {- The test "golden" files are structured as follows:
