@@ -161,14 +161,14 @@ pNest = do
   return $ Nested (col - 1) t
 
 pReflow :: TemplateMonad m => Parser m Template
-pReflow = do
-  pEnclosed $ P.string "+reflow"
-  oldBreakingSpaces <- breakingSpaces <$> P.getState
-  P.modifyState $ \st -> st{ breakingSpaces = True }
-  res <- pTemplate
-  P.modifyState $ \st -> st{ breakingSpaces = oldBreakingSpaces }
-  P.optional $ pEnclosed $ P.string "-reflow"
-  return res
+pReflow = mempty <$ (pReflowOn <|> pReflowOff)
+ where
+  pReflowOn = do
+    pEnclosed $ P.string "+reflow"
+    P.modifyState $ \st -> st{ breakingSpaces = True }
+  pReflowOff = do
+    pEnclosed $ P.string "-reflow"
+    P.modifyState $ \st -> st{ breakingSpaces = False }
 
 pForLoop :: TemplateMonad m => Parser m Template
 pForLoop = do
