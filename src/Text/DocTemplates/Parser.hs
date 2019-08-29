@@ -73,20 +73,17 @@ pNewline = do
 pLit :: Monad m => Parser m Template
 pLit = do
   col <- P.sourceColumn <$> P.getPosition
-  cs <- P.many1 (P.satisfy (\c -> c /= '$' && c /= '\n' && c /= '\r'))
   ind <- indentLevel <$> P.getState
-  cs' <- if ind == 0
-            then return cs
-            else do
-              let (as, _) = span (==' ') cs
-              if length as >= ind
-                 then return $ drop ind cs
-                 else return cs
-  P.updateState $ \st -> st{ beginsLine = col == 1 && all (==' ') cs' }
+  -- eat up indentlevel spaces
+  P.skipMany $ do
+    P.getPosition >>= guard . (< (ind - 1)) . P.sourceColumn
+    P.satisfy (\c -> c == ' ' || c == '\t')
+  cs <- P.many1 (P.satisfy (\c -> c /= '$' && c /= '\n' && c /= '\r'))
+  P.updateState $ \st -> st{ beginsLine = col == 1 && all (==' ') cs }
   breakspaces <- breakingSpaces <$> P.getState
   if breakspaces
-     then return $ toBreakable cs'
-     else return $ Literal $ fromString cs'
+     then return $ toBreakable cs
+     else return $ Literal $ fromString cs
 
 toBreakable :: String -> Template
 toBreakable [] = Empty
