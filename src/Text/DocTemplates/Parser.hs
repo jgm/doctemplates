@@ -156,24 +156,18 @@ pNest :: TemplateMonad m => Parser m Template
 pNest = do
   col <- P.sourceColumn <$> P.getPosition
   pEnclosed $ P.string "+nest"
-  -- if newline after the "+rest", then a newline after "-nest" will be swallowed
-  multiline <- P.option False (True <$ skipEndline)
   t <- pTemplate
   P.optional $ pEnclosed $ P.string "-nest"
-  when multiline $ P.option () skipEndline
   return $ Nested (col - 1) t
 
 pReflow :: TemplateMonad m => Parser m Template
 pReflow = do
   pEnclosed $ P.string "+reflow"
-  -- if newline after the "+rest", then a newline after "-nest" will be swallowed
-  multiline <- P.option False (True <$ skipEndline)
   oldBreakingSpaces <- breakingSpaces <$> P.getState
   P.modifyState $ \st -> st{ breakingSpaces = True }
   res <- pTemplate
   P.modifyState $ \st -> st{ breakingSpaces = oldBreakingSpaces }
   P.optional $ pEnclosed $ P.string "-reflow"
-  when multiline $ P.option () skipEndline
   return res
 
 pForLoop :: TemplateMonad m => Parser m Template
