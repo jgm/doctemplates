@@ -74,12 +74,19 @@ pLit :: Monad m => Parser m Template
 pLit = do
   col <- P.sourceColumn <$> P.getPosition
   cs <- P.many1 (P.satisfy (\c -> c /= '$' && c /= '\n' && c /= '\r'))
-  P.updateState $ \st -> st{ beginsLine = col == 1 &&
-                               all isSpacy cs }
+  ind <- indentLevel <$> P.getState
+  cs' <- if ind == 0
+            then return cs
+            else do
+              let (as, _) = span (==' ') cs
+              if length as >= ind
+                 then return $ drop ind cs
+                 else return cs
+  P.updateState $ \st -> st{ beginsLine = col == 1 && all (==' ') cs' }
   breakspaces <- breakingSpaces <$> P.getState
   if breakspaces
-     then return $ toBreakable cs
-     else return $ Literal $ fromString cs
+     then return $ toBreakable cs'
+     else return $ Literal $ fromString cs'
 
 toBreakable :: String -> Template
 toBreakable [] = Empty
@@ -165,6 +172,7 @@ pNest :: TemplateMonad m => Parser m Template
 pNest = do
   col <- P.sourceColumn <$> P.getPosition
   pEnclosed $ P.string "+nest"
+  P.updateState $ \st -> st{ indentLevel = col - 1 }
   t <- pTemplate
   P.optional $ pEnclosed $ P.string "-nest"
   return $ Nested (col - 1) t
