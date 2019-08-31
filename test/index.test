@@ -1,0 +1,19 @@
+{ "employee":
+  [ { "name": { "first": "John", "last": "Doe" } }
+  , { "name": { "first": "Omar", "last": "Smith" }
+    , "accounts": [ "x", "y" ] }
+  , { "name": { "first": "Sara", "last": "Chen" }
+    , "accounts": [] }
+  ]
+, "foobar": [ [ "x", "y" ], [ "w", "z" ] ]
+}
+.
+The second employee, $employee[1].name.first$,
+has account $employee[1].accounts[0]$.
+
+$foobar[0][1]$
+.
+The second employee, Omar,
+has account x.
+
+y
