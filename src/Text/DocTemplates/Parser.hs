@@ -13,6 +13,7 @@
 module Text.DocTemplates.Parser
     ( compileTemplate ) where
 
+import Safe (readMay)
 import Data.Char (isAlphaNum)
 import Control.Monad (guard, when)
 import Control.Monad.Trans (lift)
@@ -212,7 +213,7 @@ changeToIt v = go
   go x = x
   reletter (Variable vs) (Variable ws) =
     if vs `isPrefixOf` ws
-       then Variable ("it" : drop (length vs) ws)
+       then Variable (VarName "it" : drop (length vs) ws)
        else Variable ws
 
 pInterpolate :: TemplateMonad m
@@ -234,13 +235,14 @@ pInterpolate = do
   closer
   ends <- P.lookAhead $ P.option False $
              True <$ P.try (P.skipMany pSpaceOrTab *> pNewlineOrEof)
+  let toNested = case P.sourceColumn pos - 1 of
+                   0 -> id
+                   i -> Nested i
   case (begins && ends, res) of
     (True, Interpolate v)
-               -> return $ Nested (P.sourceColumn pos - 1)
-                         $ Interpolate v
+               -> return $ toNested $ Interpolate v
     (True, Iterate v (Interpolate v') s)
-               -> return $ Nested (P.sourceColumn pos - 1)
-                         $ Iterate v (Interpolate v') s
+               -> return $ toNested $ Iterate v (Interpolate v') s
     _ -> return res
 
 pNewlineOrEof :: Monad m => Parser m ()
@@ -332,24 +334,32 @@ pOpen = pOpenDollar <|> pOpenBraces
 
 pVar :: Monad m => Parser m Variable
 pVar = do
-  first <- pIdentPart <|> "it" <$ P.try (P.string "it")
-  rest <- P.many $ (P.char '.' *> pIdentPart) <|> pIndex
+  first <- pIdentPart <|> VarName "it" <$ P.try (P.string "it")
+  rest <- P.many $ (P.char '.' *> pIdentPart)
   return $ Variable (first:rest)
 
-pIdentPart :: Monad m => Parser m Text
-pIdentPart = P.try $ do
+pIdentPart :: Monad m => Parser m VarPart
+pIdentPart = do
+  p <- pBaseIdentPart
+  is <- P.many pIndex
+  return $ foldl (\x i -> Indexed i x) p is
+
+pBaseIdentPart :: Monad m => Parser m VarPart
+pBaseIdentPart = P.try $ do
   first <- P.letter
   rest <- P.many (P.satisfy (\c -> isAlphaNum c || c == '_' || c == '-'))
   let part = first : rest
   guard $ part `notElem` reservedWords
-  return $ fromString part
+  return $ VarName $ fromString part
 
-pIndex :: Monad m => Parser m Text
+pIndex :: Monad m => Parser m Int
 pIndex = P.try $ do
   P.char '['
   ds <- P.many1 (P.digit)
   P.char ']'
-  return $ fromString $ "[" <> ds <> "]"
+  case readMay ds of
+    Nothing -> fail $ "Could not read number " ++ ds
+    Just i  -> return i
 
 reservedWords :: [String]
 reservedWords = ["if","else","endif","elseif","for","endfor","sep","it"]
