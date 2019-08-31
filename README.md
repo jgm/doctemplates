@@ -316,3 +316,14 @@ $for(article)$
   ($article.year$).$-nest$
 $endfor$
 ```
+
+## Indexing an array
+
+Square brackets may be used to retrieve a specific element
+of an array:
+
+Example:
+
+```
+$articles[0].author$ is the first article's author.
+```

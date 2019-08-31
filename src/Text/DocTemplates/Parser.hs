@@ -333,7 +333,7 @@ pOpen = pOpenDollar <|> pOpenBraces
 pVar :: Monad m => Parser m Variable
 pVar = do
   first <- pIdentPart <|> "it" <$ P.try (P.string "it")
-  rest <- P.many $ P.char '.' *> pIdentPart
+  rest <- P.many $ (P.char '.' *> pIdentPart) <|> pIndex
   return $ Variable (first:rest)
 
 pIdentPart :: Monad m => Parser m Text
@@ -343,6 +343,13 @@ pIdentPart = P.try $ do
   let part = first : rest
   guard $ part `notElem` reservedWords
   return $ fromString part
+
+pIndex :: Monad m => Parser m Text
+pIndex = P.try $ do
+  P.char '['
+  ds <- P.many1 (P.digit)
+  P.char ']'
+  return $ fromString $ "[" <> ds <> "]"
 
 reservedWords :: [String]
 reservedWords = ["if","else","endif","elseif","for","endfor","sep","it"]
