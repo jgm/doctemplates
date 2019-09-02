@@ -1,7 +1,13 @@
 name:                doctemplates
 version:             0.6
 synopsis:            Pandoc-style document templates
-description:         A simple text templating system used by pandoc.
+description:         This is the text templating system used by pandoc.
+                     It supports variable interpolation, iteration,
+                     tests for non-blank values, and partials.  Templates
+                     may be rendered to a variety of formats, including
+                     doclayout Docs, and variable values may come from
+                     a variety of different sources, including aeson
+                     Values.
 homepage:            https://github.com/jgm/doctemplates#readme
 license:             BSD3
 license-file:        LICENSE

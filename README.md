@@ -87,24 +87,27 @@ ${foo_bar.baz-bim}
 ${ foo }
 ```
 
-The values of variables are determined by a JSON object that is
+The values of variables are determined by the `Context` that is
 passed as a parameter to `renderTemplate`.  So, for example,
 `title` will return the value of the `title` field, and
 `employee.salary` will return the value of the `salary` field
 of the object that is the value of the `employee` field.
 
-- If the value of the variable is a JSON string, the string will
-  be rendered verbatim.  (Note that no escaping is done on the
-  string; the assumption is that the calling program will escape
+- If the value of the variable is simple value, it will be
+  rendered verbatim.  (Note that no escaping is done;
+  the assumption is that the calling program will escape
   the strings appropriately for the output format.)
-- If the value is a JSON array, the values will be concatenated.
-- If the value is a JSON object, the string `true` will be
-  rendered.
-- If the value is a JSON number, it will be rendered as an
+- If the value is a list, the values will be concatenated.
+- If the value is a map, the string `true` will be rendered.
+- Every other value will be rendered as the empty string.
+
+When a `Context` is derived from an aeson (JSON) `Value`,
+the following conversions are done:
+
+- If the value is a number, it will be rendered as an
   integer if possible, otherwise as a floating-point number.
 - If the value is a JSON boolean, it will be rendered as `true`
   if true, and as the empty string if false.
-- Every other value will be rendered as the empty string.
 
 The value of a variable that occurs by itself on a line
 will be indented to the same level as the opening delimiter of
@@ -291,8 +294,8 @@ in part of the template by using the `+reflow` keyword (ended
 with `-reflow`).
 
 ```
-${+reflow}This long line may break if the document is rendered
-with a short line length.${-reflow}
+${ +reflow }This long line may break if the document is rendered
+with a short line length.${ -reflow }
 ```
 
 The `+` keyword has no effect when rendering to `Text`
