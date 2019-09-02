@@ -35,7 +35,7 @@ module Text.DocTemplates.Internal
       , VarPart(..)
       ) where
 
-import Safe (lastMay, initDef)
+import Safe (lastMay, initDef, atDef)
 import Data.Aeson (Value(..), ToJSON(..), FromJSON(..), Result(..), fromJSON)
 import Control.Monad.Identity
 import qualified Data.Text as T
@@ -274,7 +274,8 @@ multiLookup (VarName t:vs) (MapVal (Context o)) =
     Just v' -> multiLookup vs v'
 multiLookup (Indexed i v:vs) val =
   case multiLookup [v] val of
-    ListVal xs | length xs > i -> multiLookup vs (xs !! i)
+    ListVal xs | length xs > i - 1
+      -> multiLookup vs (atDef NullVal xs (i - 1))
     _ -> NullVal
 multiLookup _ _ = NullVal
 

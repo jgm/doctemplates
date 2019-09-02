@@ -9,10 +9,13 @@
 , "baz": [ [ {"name": "y"}, {"name": "z"} ] ]
 }
 .
-The second employee, $employee[1].name.first$,
-has account $employee[1].accounts[0]$.
+The second employee, $employee[2].name.first$,
+has account $employee[2].accounts[1]$.
 
-$foobar[0][1]$
+$foobar[1][1]$
+$foobar[1][2]$
+$foobar[2][1]$
+$foobar[2][2]$
 
 $for(baz)$
 $it[1].name$
@@ -21,6 +24,9 @@ $endfor$
 The second employee, Omar,
 has account x.
 
+x
 y
-
+w
 z
+
+y

@@ -365,6 +365,7 @@ pIndex = P.try $ do
   P.char ']'
   case readMay ds of
     Nothing -> fail $ "Could not read number " ++ ds
+    Just 0  -> fail $ "[0]: array indices begin at 1"
     Just i  -> return i
 
 reservedWords :: [String]
