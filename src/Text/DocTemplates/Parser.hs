@@ -334,9 +334,15 @@ pOpen = pOpenDollar <|> pOpenBraces
 
 pVar :: Monad m => Parser m Variable
 pVar = do
-  first <- pIdentPart <|> VarName "it" <$ P.try (P.string "it")
+  first <- pIdentPart <|> pIt
   rest <- P.many $ (P.char '.' *> pIdentPart)
   return $ Variable (first:rest)
+
+pIt :: Monad m => Parser m VarPart
+pIt = do
+  P.try (P.string "it")
+  is <- P.many pIndex
+  return $ foldl (\x i -> Indexed i x) (VarName "it") is
 
 pIdentPart :: Monad m => Parser m VarPart
 pIdentPart = do

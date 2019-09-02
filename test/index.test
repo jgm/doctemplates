@@ -6,14 +6,21 @@
     , "accounts": [] }
   ]
 , "foobar": [ [ "x", "y" ], [ "w", "z" ] ]
+, "baz": [ [ {"name": "y"}, {"name": "z"} ] ]
 }
 .
 The second employee, $employee[1].name.first$,
 has account $employee[1].accounts[0]$.
 
 $foobar[0][1]$
+
+$for(baz)$
+$it[1].name$
+$endfor$
 .
 The second employee, Omar,
 has account x.
 
 y
+
+z
