@@ -1,5 +1,16 @@
 # doctemplates
 
+## 0.6
+
+  * Add `+nest`/`-nest` keywords.
+
+  * Add `+reflow`/`-reflow` keywords.
+
+  * Add Nested constructor to Template, remove Indented
+    and Indented parameter for Interpolate.
+
+  * More expansive description of library.
+
 ## 0.5.1
 
   * Add elseif keyword.
