@@ -32,10 +32,9 @@ module Text.DocTemplates.Internal
       , TemplateTarget(..)
       , Template(..)
       , Variable(..)
-      , VarPart(..)
       ) where
 
-import Safe (lastMay, initDef, atDef)
+import Safe (lastMay, initDef)
 import Data.Aeson (Value(..), ToJSON(..), FromJSON(..), Result(..), fromJSON)
 import Control.Monad.Identity
 import qualified Data.Text as T
@@ -80,7 +79,7 @@ instance Monoid Template where
   mempty = Empty
 
 -- | A variable which may have several parts (@foo.bar.baz@).
-newtype Variable = Variable { unVariable :: [VarPart] }
+newtype Variable = Variable { unVariable :: [Text] }
   deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
 instance Semigroup Variable where
@@ -89,14 +88,6 @@ instance Semigroup Variable where
 instance Monoid Variable where
   mempty = Variable []
   mappend = (<>)
-
-data VarPart =
-    VarName Text
-  | Indexed Int VarPart
-  deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
-
-instance IsString VarPart where
-  fromString = VarName . fromString
 
 -- | A type to which templates can be rendered.
 class Monoid a => TemplateTarget a where
@@ -266,17 +257,12 @@ instance TemplateTarget a => ToJSON (Val a) where
   toJSON (ListVal xs) = toJSON xs
   toJSON (SimpleVal t) = toJSON $ toText t
 
-multiLookup :: [VarPart] -> Val a -> Val a
+multiLookup :: [Text] -> Val a -> Val a
 multiLookup [] x = x
-multiLookup (VarName t:vs) (MapVal (Context o)) =
+multiLookup (t:vs) (MapVal (Context o)) =
   case M.lookup t o of
     Nothing -> NullVal
     Just v' -> multiLookup vs v'
-multiLookup (Indexed i v:vs) val =
-  case multiLookup [v] val of
-    ListVal xs | length xs > i - 1
-      -> multiLookup vs (atDef NullVal xs (i - 1))
-    _ -> NullVal
 multiLookup _ _ = NullVal
 
 resolveVariable :: TemplateTarget a => Variable -> Context a -> [a]

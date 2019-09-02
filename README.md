@@ -317,14 +317,3 @@ $for(article)$
 $endfor$
 ```
 
-## Indexing an array
-
-Square brackets may be used to retrieve a specific element
-of an array.  Arrays are indexed starting with 1, so
-`$articles[1]$` is the first element of `articles`.
-
-Example:
-
-```
-$articles[1].author$ is the first article's author.
-```

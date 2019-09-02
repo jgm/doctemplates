@@ -30,7 +30,7 @@ unitTests :: [TestTree]
 unitTests = [
     testCase "compile failure" $ do
       res <- compileTemplate "" "$if(x$and$endif$"
-      res @?= Left "(line 1, column 6):\nunexpected \"$\"\nexpecting \"[\", \".\" or \")\""
+      res @?= Left "(line 1, column 6):\nunexpected \"$\"\nexpecting \".\" or \")\""
   , testCase "compile failure (keyword as variable)" $ do
       res <- compileTemplate "foobar.txt" "$sep$"
       res @?= Left "\"foobar.txt\" (line 1, column 5):\nunexpected \"$\"\nexpecting letter or digit or \"()\""

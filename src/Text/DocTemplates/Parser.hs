@@ -13,7 +13,6 @@
 module Text.DocTemplates.Parser
     ( compileTemplate ) where
 
-import Safe (readMay)
 import Data.Char (isAlphaNum)
 import Control.Monad (guard, when)
 import Control.Monad.Trans (lift)
@@ -213,7 +212,7 @@ changeToIt v = go
   go x = x
   reletter (Variable vs) (Variable ws) =
     if vs `isPrefixOf` ws
-       then Variable (VarName "it" : drop (length vs) ws)
+       then Variable ("it" : drop (length vs) ws)
        else Variable ws
 
 pInterpolate :: TemplateMonad m
@@ -338,35 +337,16 @@ pVar = do
   rest <- P.many $ (P.char '.' *> pIdentPart)
   return $ Variable (first:rest)
 
-pIt :: Monad m => Parser m VarPart
-pIt = do
-  P.try (P.string "it")
-  is <- P.many pIndex
-  return $ foldl (\x i -> Indexed i x) (VarName "it") is
+pIt :: Monad m => Parser m Text
+pIt = fromString <$> P.try (P.string "it")
 
-pIdentPart :: Monad m => Parser m VarPart
-pIdentPart = do
-  p <- pBaseIdentPart
-  is <- P.many pIndex
-  return $ foldl (\x i -> Indexed i x) p is
-
-pBaseIdentPart :: Monad m => Parser m VarPart
-pBaseIdentPart = P.try $ do
+pIdentPart :: Monad m => Parser m Text
+pIdentPart = P.try $ do
   first <- P.letter
   rest <- P.many (P.satisfy (\c -> isAlphaNum c || c == '_' || c == '-'))
   let part = first : rest
   guard $ part `notElem` reservedWords
-  return $ VarName $ fromString part
-
-pIndex :: Monad m => Parser m Int
-pIndex = P.try $ do
-  P.char '['
-  ds <- P.many1 (P.digit)
-  P.char ']'
-  case readMay ds of
-    Nothing -> fail $ "Could not read number " ++ ds
-    Just 0  -> fail $ "[0]: array indices begin at 1"
-    Just i  -> return i
+  return $ fromString part
 
 reservedWords :: [String]
 reservedWords = ["if","else","endif","elseif","for","endfor","sep","it"]
