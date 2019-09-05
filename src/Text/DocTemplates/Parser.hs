@@ -250,6 +250,7 @@ pNewlineOrEof = () <$ P.newline <|> P.eof
 pBarePartial :: TemplateMonad m
              => Parser m Template
 pBarePartial = do
+  pos <- P.getPosition
   (closer, fp) <- P.try $ do
     closer <- pOpen
     P.skipMany pSpaceOrTab
@@ -258,7 +259,10 @@ pBarePartial = do
   res <- pPartial Nothing fp
   P.skipMany pSpaceOrTab
   closer
-  return res
+  let toNested = case P.sourceColumn pos - 1 of
+                   0 -> id
+                   i -> Nested i
+  return $ toNested res
 
 pPartialName :: TemplateMonad m
              => Parser m FilePath
