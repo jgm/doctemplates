@@ -1,5 +1,9 @@
 # doctemplates
 
+## 0.6.1
+
+  * Indent bare partials.
+
 ## 0.6
 
   * Add `+nest`/`-nest` keywords.
