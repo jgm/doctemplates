@@ -169,14 +169,14 @@ class ToContext a b where
                   _        -> mempty
   toVal     :: b -> Val a
 
-instance TemplateTarget a => ToContext a (Context a) where
+instance ToContext a (Context a) where
   toContext = id
   toVal     = MapVal
 
-instance TemplateTarget a => ToContext a (Val a) where
+instance ToContext a (Val a) where
   toVal     = id
 
-instance TemplateTarget a => ToContext a a where
+instance ToContext a a where
   toVal     = SimpleVal
 
 -- This is needed because otherwise the compiler tries to
