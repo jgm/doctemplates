@@ -188,6 +188,10 @@ instance {-# OVERLAPS #-} ToContext String String where
 instance ToContext a b => ToContext a [b] where
   toVal     = ListVal . map toVal
 
+instance ToContext a b => ToContext a (M.Map Text b) where
+  toVal     = MapVal . toContext
+  toContext = Context . M.map toVal
+
 instance TemplateTarget a => ToContext a Value where
   toContext x = case fromJSON x of
                   Success y -> y
