@@ -182,8 +182,8 @@ instance ToContext a a where
 -- This is needed because otherwise the compiler tries to
 -- match on ToContext a [b], with a = b = Char, even though
 -- we don't have ToContext Char Char.  I don't understand why.
-instance {-# OVERLAPS #-} ToContext String String where
-  toVal t   = SimpleVal t
+instance {-# OVERLAPS #-} IsString a => ToContext a String where
+  toVal t   = SimpleVal (fromString t)
 
 instance ToContext a b => ToContext a [b] where
   toVal     = ListVal . map toVal
