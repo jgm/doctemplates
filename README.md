@@ -1,5 +1,9 @@
 # doctemplates
 
+[![CI
+tests](https://github.com/jgm/doctemplates/workflows/CI%20tests/badge.svg)](https://github.com/jgm/doctemplates/actions)
+
+
 This is the text templating system used by pandoc.  Its basic
 function is to fill holes in a template in a "Context" that
 provides values for variables.  Control structures are provided
