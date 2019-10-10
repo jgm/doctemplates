@@ -1,5 +1,14 @@
 # doctemplates
 
+## 0.6.2
+
+  * Remove unnecessary `TemplateTarget` constraints on
+    `ToContext` instances.
+
+  * Add `ToContext` instance for `Map Text a`.
+
+  * Add `Data`, `Typeable` instances for `Context` and `Val`.
+
 ## 0.6.1
 
   * Indent bare partials.
