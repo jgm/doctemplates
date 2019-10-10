@@ -3,5 +3,6 @@ packages:
 - '.'
 extra-deps:
 - doclayout-0.1
+- HsYAML-0.2.0.0
 flags: {}
 extra-package-dbs: []

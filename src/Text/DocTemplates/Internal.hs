@@ -36,6 +36,7 @@ module Text.DocTemplates.Internal
 
 import Safe (lastMay, initDef)
 import Data.Aeson (Value(..), ToJSON(..), FromJSON(..), Result(..), fromJSON)
+import Data.YAML (ToYAML(..), FromYAML(..), Node(..), Scalar(..))
 import Control.Monad.Identity
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
@@ -232,13 +233,6 @@ instance FromContext a b => FromContext a [b] where
   fromVal (ListVal  xs) = mapM fromVal xs
   fromVal x             = sequence [fromVal x]
 
-instance TemplateTarget a => FromJSON (Context a) where
-  parseJSON v = do
-    val <- parseJSON v
-    case val of
-      MapVal o -> return o
-      _        -> fail "Not a MapVal"
-
 instance TemplateTarget a => FromJSON (Val a) where
   parseJSON v =
     case v of
@@ -252,6 +246,13 @@ instance TemplateTarget a => FromJSON (Val a) where
       Object o    -> MapVal . Context . M.fromList . H.toList <$>
                        mapM parseJSON o
       _           -> return NullVal
+
+instance TemplateTarget a => FromJSON (Context a) where
+  parseJSON v = do
+    val <- parseJSON v
+    case val of
+      MapVal o -> return o
+      _        -> fail "Expecting MapVal"
 
 instance TemplateTarget a => ToJSON (Context a) where
   toJSON (Context m) = toJSON m
@@ -269,6 +270,38 @@ multiLookup (t:vs) (MapVal (Context o)) =
     Nothing -> NullVal
     Just v' -> multiLookup vs v'
 multiLookup _ _ = NullVal
+
+
+instance TemplateTarget a => FromYAML (Val a) where
+  parseYAML v =
+    case v of
+      Mapping _ _ m -> MapVal . Context . M.fromList <$>
+                           mapM (\(key, val) -> do
+                                  val' <- parseYAML val
+                                  key' <- parseYAML key
+                                  return (key', val')) (M.toList m)
+      Sequence _ _ xs -> ListVal <$> mapM parseYAML xs
+      Scalar _ (SStr t) -> return $ SimpleVal $ fromText t
+      Scalar _ (SFloat n) -> return $ SimpleVal $ fromText . fromString . show $ n
+      Scalar _ (SInt n) -> return $ SimpleVal $ fromText . fromString . show $ n
+      Scalar _ (SBool True) -> return $ SimpleVal $ fromText "true"
+      _           -> return NullVal
+
+instance TemplateTarget a => FromYAML (Context a) where
+  parseYAML v = do
+    val <- parseYAML v
+    case val of
+      MapVal o -> return o
+      _        -> fail "Expecting MapVal"
+
+instance TemplateTarget a => ToYAML (Context a) where
+  toYAML (Context m) = toYAML m
+
+instance TemplateTarget a => ToYAML (Val a) where
+  toYAML NullVal = toYAML (Nothing :: Maybe Text)
+  toYAML (MapVal m) = toYAML m
+  toYAML (ListVal xs) = toYAML xs
+  toYAML (SimpleVal t) = toYAML $ toText t
 
 resolveVariable :: TemplateTarget a => Variable -> Context a -> [a]
 resolveVariable v ctx = resolveVariable' v (MapVal ctx)
