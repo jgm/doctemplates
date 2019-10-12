@@ -184,11 +184,13 @@ $endif$
 
 A for loop begins with `for(variable)` (enclosed in
 matched delimiters) and ends with `endfor` (enclosed in matched
-delimiters.  If `variable` is an array, the material inside
-the loop will be evaluated repeatedly, with `variable` being set
-to each value of the array in turn.  If the value of the
-associated variable is not an array, a single iteration will be
-performed on its value.
+delimiters.
+
+- If `variable` is an array, the material inside the loop will
+  be evaluated repeatedly, with `variable` being set to each
+  value of the array in turn, and concatenated.
+- If the value of the associated variable is not an array or
+  a map, a single iteration will be performed on its value.
 
 Examples:
 
@@ -254,8 +256,8 @@ ${ articles:bibentry() }
 ```
 
 If `articles` is an array, this will iterate over its
-values, applying the partial `bibentry()` to each one.
-So the second example above is equivalent to
+values, applying the partial `bibentry()` to each one.  So the
+second example above is equivalent to
 
 ```
 ${ for(articles) }
