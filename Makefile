@@ -1,5 +1,5 @@
 all:
-	stack test
+	stack test --test-arguments="${TESTARGS}"
 
 bench:
 	stack bench
