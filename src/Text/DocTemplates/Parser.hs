@@ -210,10 +210,10 @@ changeToIt v = go
   go (Partial t) = Partial t  -- don't reletter inside partial
   go (Nested n t) = Nested n (go t)
   go x = x
-  reletter (Variable vs) (Variable ws) =
+  reletter (Variable vs _fs) (Variable ws gs) =
     if vs `isPrefixOf` ws
-       then Variable ("it" : drop (length vs) ws)
-       else Variable ws
+       then Variable ("it" : drop (length vs) ws) gs
+       else Variable ws gs
 
 pInterpolate :: TemplateMonad m
              => Parser m Template
@@ -228,7 +228,7 @@ pInterpolate = do
     P.notFollowedBy (P.char '(') -- bare partial
     return (cl, v)
   res <- (P.char ':' *> (pPartialName >>= pPartial (Just var)))
-      <|> Iterate var (Interpolate (Variable ["it"])) <$> pSep
+      <|> Iterate var (Interpolate (Variable ["it"] [])) <$> pSep
       <|> return (Interpolate var)
   P.skipMany pSpaceOrTab
   closer
@@ -339,7 +339,19 @@ pVar :: Monad m => Parser m Variable
 pVar = do
   first <- pIdentPart <|> pIt
   rest <- P.many $ (P.char '.' *> pIdentPart)
-  return $ Variable (first:rest)
+  filters <- P.many pFilter
+  return $ Variable (first:rest) filters
+
+pFilter :: Monad m => Parser m Filter
+pFilter = do
+  P.char '/'
+  P.choice $
+    map (\(filterName, filt) ->
+           filt <$ P.try (P.string filterName))
+      [ ("uppercase", ToUppercase)
+      , ("lowercase", ToLowercase)
+      , ("pairs", ToPairs)
+      , ("length", ToLength) ]
 
 pIt :: Monad m => Parser m Text
 pIt = fromString <$> P.try (P.string "it")

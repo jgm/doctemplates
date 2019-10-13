@@ -1,0 +1,62 @@
+{ "foo": 1,
+  "bar": null,
+  "baz": ["a", "b"],
+  "bim": { "Zub": "Sim" },
+  "sup": [ { "biz": "qux" },
+           { "sax": 2 } ],
+  "items": [ "one with\na line break",
+            "two",
+            "three with\na line break" ]
+}
+.
+$bar/length$
+$baz/length$
+$bim.Zub/length$
+$bim/length$
+$sup/length$
+
+$for(baz)$
+$it$
+$it/uppercase$
+$baz$
+$baz/uppercase$
+$endfor$
+
+$for(bim/pairs)$
+$it.key$: $it.value$
+$bim.key$: $bim.value/lowercase$
+$endfor$
+
+$for(baz/pairs)$
+$it.key$. $it.value$
+$endfor$
+
+$items/pairs:enum()$
+.
+0
+2
+3
+1
+2
+
+a
+A
+a
+A
+b
+B
+b
+B
+
+Zub: Sim
+Zub: sim
+
+1. a
+2. b
+
+1.  one with
+a line break
+2.  two
+3.  three with
+a line break
+

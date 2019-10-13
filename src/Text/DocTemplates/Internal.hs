@@ -32,6 +32,7 @@ module Text.DocTemplates.Internal
       , TemplateTarget(..)
       , Template(..)
       , Variable(..)
+      , Filter(..)
       ) where
 
 import Safe (lastMay, initDef)
@@ -79,15 +80,26 @@ instance Monoid Template where
   mappend = (<>)
   mempty = Empty
 
+data Filter =
+      ToPairs
+    | ToUppercase
+    | ToLowercase
+    | ToLength
+    deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
+
 -- | A variable which may have several parts (@foo.bar.baz@).
-newtype Variable = Variable { unVariable :: [Text] }
+data Variable =
+  Variable
+    { varParts   :: [Text]
+    , varFilters :: [Filter]
+    }
   deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
 instance Semigroup Variable where
-  Variable xs <> Variable ys = Variable (xs <> ys)
+  Variable xs fs <> Variable ys gs = Variable (xs <> ys) (fs <> gs)
 
 instance Monoid Variable where
-  mempty = Variable []
+  mempty = Variable mempty mempty
   mappend = (<>)
 
 -- | A type to which templates can be rendered.
@@ -263,14 +275,41 @@ instance TemplateTarget a => ToJSON (Val a) where
   toJSON (ListVal xs) = toJSON xs
   toJSON (SimpleVal t) = toJSON $ toText t
 
-multiLookup :: [Text] -> Val a -> Val a
-multiLookup [] x = x
-multiLookup (t:vs) (MapVal (Context o)) =
+applyFilter :: TemplateTarget a => Filter -> Val a -> Val a
+applyFilter ToLength val = SimpleVal $ fromText . T.pack . show $ len
+  where
+   len = case val of
+           SimpleVal t        -> T.length . toText $ t
+           MapVal (Context m) -> M.size m
+           ListVal xs         -> length xs
+           NullVal            -> 0
+applyFilter ToUppercase val =
+  case val of
+    SimpleVal t -> SimpleVal $ fromText . T.toUpper . toText $ t
+    _           -> val
+applyFilter ToLowercase val =
+  case val of
+    SimpleVal t -> SimpleVal $ fromText . T.toLower . toText $ t
+    _           -> val
+applyFilter ToPairs val =
+  case val of
+    MapVal (Context m) ->
+      ListVal $ map toPair $ M.toList m
+    ListVal xs         ->
+      ListVal $ map toPair $ zip (map (T.pack . show) [(1::Int)..]) xs
+    _                  -> val
+ where
+  toPair (k, v) = MapVal $ Context $ M.fromList $
+                    [ ("key", SimpleVal (fromText k))
+                    , ("value", v) ]
+
+multiLookup :: TemplateTarget a => [Filter] -> [Text] -> Val a -> Val a
+multiLookup fs [] x = foldr applyFilter x fs
+multiLookup fs (t:vs) (MapVal (Context o)) =
   case M.lookup t o of
     Nothing -> NullVal
-    Just v' -> multiLookup vs v'
-multiLookup _ _ = NullVal
-
+    Just v' -> multiLookup fs vs v'
+multiLookup _ _ _ = NullVal
 
 instance TemplateTarget a => FromYAML (Val a) where
   parseYAML v =
@@ -308,7 +347,7 @@ resolveVariable v ctx = resolveVariable' v (MapVal ctx)
 
 resolveVariable' :: TemplateTarget a => Variable -> Val a -> [a]
 resolveVariable' v val =
-  case multiLookup (unVariable v) val of
+  case multiLookup (varFilters v) (varParts v) val of
     ListVal xs    -> concatMap (resolveVariable' mempty) xs
     SimpleVal t
       | isEmpty t -> []
@@ -319,7 +358,7 @@ resolveVariable' v val =
 withVariable :: TemplateTarget a
              => Variable -> Context a -> (Context a -> a) -> [a]
 withVariable  v ctx f =
-  case multiLookup (unVariable v) (MapVal ctx) of
+  case multiLookup (varFilters v) (varParts v) (MapVal ctx) of
     NullVal     -> mempty
     ListVal xs  -> map (\iterval -> f $
                     Context $ M.insert "it" iterval $ unContext ctx) xs

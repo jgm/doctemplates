@@ -326,3 +326,45 @@ $for(article)$
 $endfor$
 ```
 
+## Filters
+
+A filter transforms the value of a variable.  Filters are
+specified using a slash (`/`) between the variable name and
+the filter name.  They may go anywhere a variable can go.
+Example:
+
+```
+$for(name)$
+$name/uppercase$
+$endfor$
+
+$for(metadata/pairs)$
+- $it.key$: $it.value$
+$endfor$
+```
+
+Filters may be chained:
+
+```
+$for(name)$
+$name/uppercase/length$
+$endfor$
+```
+
+Currently the following filters are predefined:
+
+- `pairs`:  Converts a map or array to an array of maps,
+  each with `key` and `value` fields.  If the original
+  value was an array, the `key` will be the array index,
+  starting with 1.
+
+- `uppercase`:  Converts a textual value to uppercase,
+  and has no effect on other values.
+
+- `lowercase`:  Converts a textual value to lowercase,
+  and has no effect on other values.
+
+- `length`:  Returns the length of the value:  number
+  of characters for a textual value, number of elements
+  for a map or array.
+
