@@ -1,0 +1,23 @@
+{ "foo": 1,
+  "baz": ["a", "b"],
+  "bim": { "zub": "sim" },
+  "sup": "a multiline\nstring"
+}
+.
+    $sup$
+   $sup$
+$bim.zub$ $+nest$$sup$$-nest$
+
+$bim.zub$ $+nest$$foo$
+          bar $sup$$-nest$
+.
+   a multiline
+   string
+  a multiline
+  string
+sim a multiline
+    string
+
+sim 1
+    bar a multiline
+    string
