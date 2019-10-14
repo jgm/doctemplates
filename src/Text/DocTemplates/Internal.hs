@@ -300,7 +300,7 @@ applyFilter ToPairs val =
       ListVal $ map toPair $ zip (map (T.pack . show) [(1::Int)..]) xs
     _                  -> val
  where
-  toPair (k, v) = MapVal $ Context $ M.fromList $
+  toPair (k, v) = MapVal $ Context $ M.fromList
                     [ ("key", SimpleVal (fromText k))
                     , ("value", v) ]
 
@@ -383,7 +383,7 @@ updateColumn x = do
 renderTemp :: forall a . TemplateTarget a
            => Template -> Context a -> S.State Int a
 renderTemp (Literal t) _ = updateColumn $ fromText t
-renderTemp BreakingSpace _ = updateColumn $ breakingSpace
+renderTemp BreakingSpace _ = updateColumn breakingSpace
 renderTemp (Interpolate v) ctx = updateColumn $ mconcat $ resolveVariable v ctx
 renderTemp (Conditional v ift elset) ctx =
   let res = resolveVariable v ctx
@@ -398,7 +398,7 @@ renderTemp (Nested t) ctx = do
   indent n <$> renderTemp t ctx
 renderTemp (Partial t) ctx = renderTemp t ctx
 renderTemp (Concat t1 t2) ctx =
-  mappend <$> (renderTemp t1 ctx) <*> (renderTemp t2 ctx)
+  mappend <$> renderTemp t1 ctx <*> renderTemp t2 ctx
 renderTemp Empty _ = return mempty
 
 -- | A 'TemplateMonad' defines a function to retrieve a partial

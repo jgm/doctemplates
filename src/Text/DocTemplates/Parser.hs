@@ -338,7 +338,7 @@ pOpen = pOpenDollar <|> pOpenBraces
 pVar :: Monad m => Parser m Variable
 pVar = do
   first <- pIdentPart <|> pIt
-  rest <- P.many $ (P.char '.' *> pIdentPart)
+  rest <- P.many (P.char '.' *> pIdentPart)
   filters <- P.many pFilter
   return $ Variable (first:rest) filters
 
