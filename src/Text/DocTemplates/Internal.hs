@@ -39,7 +39,7 @@ import Safe (lastMay, initDef)
 import Data.Aeson (Value(..), ToJSON(..), FromJSON(..), Result(..), fromJSON)
 import Data.YAML (ToYAML(..), FromYAML(..), Node(..), Scalar(..))
 import Control.Monad.Identity
-import qualified Control.Monad.State as S
+import qualified Control.Monad.State.Strict as S
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.IO as TIO
