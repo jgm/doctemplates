@@ -172,7 +172,7 @@ pNest = do
   P.updateState $ \st -> st{ indentLevel = col - 1 }
   t <- pTemplate
   P.optional $ pEnclosed $ P.string "-nest"
-  return $ Nested (col - 1) t
+  return $ Nested t
 
 pReflow :: TemplateMonad m => Parser m Template
 pReflow = mempty <$ (pReflowOn <|> pReflowOff)
@@ -208,7 +208,7 @@ changeToIt v = go
         (changeToIt v t1) (changeToIt v t2)
   go (Concat t1 t2) = changeToIt v t1 <> changeToIt v t2
   go (Partial t) = Partial t  -- don't reletter inside partial
-  go (Nested n t) = Nested n (go t)
+  go (Nested t) = Nested (go t)
   go x = x
   reletter (Variable vs _fs) (Variable ws gs) =
     if vs `isPrefixOf` ws
@@ -236,7 +236,7 @@ pInterpolate = do
              True <$ P.try (P.skipMany pSpaceOrTab *> pNewlineOrEof)
   let toNested = case P.sourceColumn pos - 1 of
                    0 -> id
-                   i -> Nested i
+                   _ -> Nested
   case (begins && ends, res) of
     (True, Interpolate v)
                -> return $ toNested $ Interpolate v
@@ -261,7 +261,7 @@ pBarePartial = do
   closer
   let toNested = case P.sourceColumn pos - 1 of
                    0 -> id
-                   i -> Nested i
+                   _ -> Nested
   return $ toNested res
 
 pPartialName :: TemplateMonad m

@@ -39,6 +39,7 @@ import Safe (lastMay, initDef)
 import Data.Aeson (Value(..), ToJSON(..), FromJSON(..), Result(..), fromJSON)
 import Data.YAML (ToYAML(..), FromYAML(..), Node(..), Scalar(..))
 import Control.Monad.Identity
+import qualified Control.Monad.State as S
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.IO as TIO
@@ -63,7 +64,7 @@ data Template =
        Interpolate Variable
      | Conditional Variable Template Template
      | Iterate Variable Template Template
-     | Nested Int Template
+     | Nested Template
      | Partial Template
      | Literal Text
      | Concat Template Template
@@ -355,39 +356,50 @@ resolveVariable' v val =
     MapVal _      -> [fromText "true"]
     NullVal       -> []
 
-withVariable :: TemplateTarget a
-             => Variable -> Context a -> (Context a -> a) -> [a]
+withVariable :: (Monad m, TemplateTarget a)
+             => Variable -> Context a -> (Context a -> m a) -> m [a]
 withVariable  v ctx f =
   case multiLookup (varFilters v) (varParts v) (MapVal ctx) of
-    NullVal     -> mempty
-    ListVal xs  -> map (\iterval -> f $
+    NullVal     -> return mempty
+    ListVal xs  -> mapM (\iterval -> f $
                     Context $ M.insert "it" iterval $ unContext ctx) xs
-    val' -> [f $ Context $ M.insert "it" val' $ unContext ctx]
+    val' -> (:[]) <$> f (Context $ M.insert "it" val' $ unContext ctx)
 
 -- | Render a compiled template in a "context" which provides
 -- values for the template's variables.
 renderTemplate :: (TemplateTarget a, ToContext a b)
                => Template -> b -> a
-renderTemplate t = renderTemp t . toContext
+renderTemplate t x = S.evalState (renderTemp t (toContext x)) 0
+
+updateColumn :: TemplateTarget a => a -> S.State Int a
+updateColumn x = do
+  let t = toText x
+  let (prefix, remainder) = T.breakOnEnd "\n" t
+  if T.null prefix
+     then S.modify (+ T.length remainder)
+     else S.put (T.length remainder)
+  return x
 
 renderTemp :: forall a . TemplateTarget a
-           => Template -> Context a -> a
-renderTemp (Literal t) _ = fromText t
-renderTemp BreakingSpace _ = breakingSpace
-renderTemp (Interpolate v) ctx = mconcat $ resolveVariable v ctx
+           => Template -> Context a -> S.State Int a
+renderTemp (Literal t) _ = updateColumn $ fromText t
+renderTemp BreakingSpace _ = updateColumn $ breakingSpace
+renderTemp (Interpolate v) ctx = updateColumn $ mconcat $ resolveVariable v ctx
 renderTemp (Conditional v ift elset) ctx =
   let res = resolveVariable v ctx
    in case res of
         [] -> renderTemp elset ctx
         _  -> renderTemp ift ctx
-renderTemp (Iterate v t sep) ctx =
-  let sep' = renderTemp sep ctx
-   in mconcat . intersperse sep' $ withVariable v ctx (renderTemp t)
-renderTemp (Nested n t) ctx = indent n $ renderTemp t ctx
+renderTemp (Iterate v t sep) ctx = do
+  sep' <- renderTemp sep ctx
+  mconcat . intersperse sep' <$> withVariable v ctx (renderTemp t)
+renderTemp (Nested t) ctx = do
+  n <- S.get
+  indent n <$> renderTemp t ctx
 renderTemp (Partial t) ctx = renderTemp t ctx
 renderTemp (Concat t1 t2) ctx =
-  mappend (renderTemp t1 ctx) (renderTemp t2 ctx)
-renderTemp Empty _ = mempty
+  mappend <$> (renderTemp t1 ctx) <*> (renderTemp t2 ctx)
+renderTemp Empty _ = return mempty
 
 -- | A 'TemplateMonad' defines a function to retrieve a partial
 -- (from the file system, from a database, or using a default
