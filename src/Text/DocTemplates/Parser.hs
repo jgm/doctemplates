@@ -75,8 +75,8 @@ pLit = do
   col <- P.sourceColumn <$> P.getPosition
   ind <- indentLevel <$> P.getState
   -- eat up indentlevel spaces
-  P.skipMany $ do
-    P.getPosition >>= guard . (< (ind - 1)) . P.sourceColumn
+  P.skipMany $ P.try $ do
+    P.getPosition >>= guard . (< (ind + 1)) . P.sourceColumn
     P.satisfy (\c -> c == ' ' || c == '\t')
   cs <- P.many1 (P.satisfy (\c -> c /= '$' && c /= '\n' && c /= '\r'))
   P.updateState $ \st -> st{ beginsLine = col == 1 && all (==' ') cs }
