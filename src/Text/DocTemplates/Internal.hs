@@ -365,13 +365,15 @@ withVariable  v ctx f =
                     Context $ M.insert "it" iterval $ unContext ctx) xs
     val' -> (:[]) <$> f (Context $ M.insert "it" val' $ unContext ctx)
 
+type RenderState = S.State Int
+
 -- | Render a compiled template in a "context" which provides
 -- values for the template's variables.
 renderTemplate :: (TemplateTarget a, ToContext a b)
                => Template -> b -> a
 renderTemplate t x = S.evalState (renderTemp t (toContext x)) 0
 
-updateColumn :: TemplateTarget a => a -> S.State Int a
+updateColumn :: TemplateTarget a => a -> RenderState a
 updateColumn x = do
   let t = toText x
   let (prefix, remainder) = T.breakOnEnd "\n" t
@@ -381,7 +383,7 @@ updateColumn x = do
   return x
 
 renderTemp :: forall a . TemplateTarget a
-           => Template -> Context a -> S.State Int a
+           => Template -> Context a -> RenderState a
 renderTemp (Literal t) _ = updateColumn $ fromText t
 renderTemp BreakingSpace _ = updateColumn breakingSpace
 renderTemp (Interpolate v) ctx = updateColumn $ mconcat $ resolveVariable v ctx
