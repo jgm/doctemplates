@@ -168,10 +168,12 @@ skipEndline = P.try $
 pNest :: TemplateMonad m => Parser m Template
 pNest = do
   col <- P.sourceColumn <$> P.getPosition
+  ind <- indentLevel <$> P.getState
   pEnclosed $ P.string "+nest"
   P.updateState $ \st -> st{ indentLevel = col - 1 }
   t <- pTemplate
   P.optional $ pEnclosed $ P.string "-nest"
+  P.updateState $ \st -> st{ indentLevel = ind }
   return $ Nested t
 
 pReflow :: TemplateMonad m => Parser m Template

@@ -72,7 +72,7 @@ A template with bar, baz.
 -}
 
 diff :: FilePath -> FilePath -> [String]
-diff ref new = ["diff", "-u", ref, new]
+diff ref new = ["diff", "-u", "--minimal", ref, new]
 
 getTest :: FilePath -> FilePath -> IO TestTree
 getTest tmpdir fp = do

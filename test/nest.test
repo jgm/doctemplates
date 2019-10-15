@@ -11,10 +11,10 @@ $bim.zub$ $+nest$$sup$$-nest$
 $bim.zub$ $+nest$$foo$
           bar $sup$$-nest$
 .
+    a multiline
+    string
    a multiline
    string
-  a multiline
-  string
 sim a multiline
     string
 
