@@ -395,8 +395,9 @@ renderTemp (Conditional v ift elset) ctx =
         [] -> renderTemp elset ctx
         _  -> renderTemp ift ctx
 renderTemp (Iterate v t sep) ctx = do
+  xs <- withVariable v ctx (renderTemp t)
   sep' <- renderTemp sep ctx
-  mconcat . intersperse sep' <$> withVariable v ctx (renderTemp t)
+  return . mconcat . intersperse sep' $ xs
 renderTemp (Nested t) ctx = do
   n <- S.get
   indent n <$> renderTemp t ctx

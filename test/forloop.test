@@ -1,9 +1,9 @@
 { "employee":
-  [ { "name": { "first": "John", "last": "Doe" } }
-  , { "name": { "first": "Omar", "last": "Smith" }
+  [ { "name": { "first": "John", "last": "Doe" }
     , "salary": "30000" }
-  , { "name": { "first": "Sara", "last": "Chen" }
+  , { "name": { "first": "Omar", "last": "Smith" }
     , "salary": "60000" }
+  , { "name": { "first": "Sara", "last": "Chen" } }
   ]
 }
 .
@@ -12,10 +12,10 @@ $employee.name.first$ $employee.name.last$$sep$;
 $endfor$
 
 
-$for(employee)$$employee.salary$$sep$:$endfor$
+$for(employee)$$employee.salary$$sep$; $endfor$
 .
 John Doe;
 Omar Smith;
 Sara Chen
 
-:30000:60000
+30000; 60000; 
