@@ -38,7 +38,6 @@ compileTemplate templPath template = do
   res <- P.runParserT (pTemplate <* P.eof)
            PState{ templatePath   = templPath
                  , partialNesting = 1
-                 , indentLevel = 0
                  , breakingSpaces = False } templPath template
   case res of
        Left e   -> return $ Left $ show e
@@ -48,7 +47,6 @@ compileTemplate templPath template = do
 data PState =
   PState { templatePath   :: FilePath
          , partialNesting :: Int
-         , indentLevel    :: Int
          , breakingSpaces :: Bool }
 
 type Parser = P.ParsecT Text PState
