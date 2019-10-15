@@ -92,7 +92,7 @@ pEscape = Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1)
 pDirective :: TemplateMonad m
            => Parser m Template
 pDirective = do
-  res <- pConditional <|> pForLoop <|> pReflow <|>
+  res <- pConditional <|> pForLoop <|> pReflowToggle <|>
          pInterpolate <|> pBarePartial
   return res
 
@@ -143,15 +143,11 @@ skipEndline = P.try $
       (P.skipMany pSpaceOrTab <* P.char '\n')
   <|> (P.skipMany1 pSpaceOrTab <* P.eof)
 
-pReflow :: TemplateMonad m => Parser m Template
-pReflow = mempty <$ (pReflowOn <|> pReflowOff)
- where
-  pReflowOn = do
-    pEnclosed $ P.string "+reflow"
-    P.modifyState $ \st -> st{ breakingSpaces = True }
-  pReflowOff = do
-    pEnclosed $ P.string "-reflow"
-    P.modifyState $ \st -> st{ breakingSpaces = False }
+pReflowToggle :: TemplateMonad m => Parser m Template
+pReflowToggle = do
+  pEnclosed $ P.char '~'
+  P.modifyState $ \st -> st{ breakingSpaces = not (breakingSpaces st) }
+  return mempty
 
 pForLoop :: TemplateMonad m => Parser m Template
 pForLoop = do

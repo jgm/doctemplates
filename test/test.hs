@@ -41,13 +41,13 @@ unitTests = [
       res <- compileTemplate "foo" "$-- hi"
       res @?= Right mempty
   , testCase "reflow" $ do
-      templ <- compileTemplate "foo" "not breakable and $+reflow$ this is breakable\nok? $foo$$-reflow$"
+      templ <- compileTemplate "foo" "not breakable and$~$ this is breakable\nok? $foo$$~$"
       let res :: T.Text
           res = case templ of
                   Right t -> render (Just 10)
                    (renderTemplate t (object ["foo" .= ("42" :: T.Text)]))
                   Left e  -> T.pack e
-      res @?= "not breakable and \nthis is\nbreakable\nok? 42"
+      res @?= "not breakable and\nthis is\nbreakable\nok? 42"
   ]
 
 {- The test "golden" files are structured as follows:

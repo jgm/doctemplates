@@ -296,15 +296,15 @@ When rendering to a `Doc`, a distinction can be made between
 breakable and unbreakable spaces.  Normally, spaces in the
 template itself (as opposed to values of the interpolated
 variables) are not breakable, but they can be made breakable
-in part of the template by using the `+reflow` keyword (ended
-with `-reflow`).
+in part of the template by using the `~` keyword (ended
+with another `~`).
 
 ```
-${ +reflow }This long line may break if the document is rendered
-with a short line length.${ -reflow }
+$~$This long line may break if the document is rendered
+with a short line length.$~$
 ```
 
-The `+` keyword has no effect when rendering to `Text`
+The `~` keyword has no effect when rendering to `Text`
 or `String`.
 
 ## Filters
