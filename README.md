@@ -113,9 +113,10 @@ the following conversions are done:
 - If the value is a JSON boolean, it will be rendered as `true`
   if true, and as the empty string if false.
 
-If variable's value contains multiple lines, it will be
-rendered so that subsequent lines are indented to the
-same level as the first.
+If a variable is not followed by further text or directives
+on the same line, and the variable's value contains multiple
+lines, it will be rendered so that subsequent lines are indented
+to the same level as the first.
 
 ## Conditionals
 

@@ -196,13 +196,21 @@ pInterpolate = do
       <|> return (Interpolate var)
   P.skipMany pSpaceOrTab
   closer
-  let toNested = case P.sourceColumn pos - 1 of
-                   0 -> id
-                   _ -> Nested
-  return $ toNested res
+  handleNesting pos res
 
 pNewlineOrEof :: Monad m => Parser m ()
 pNewlineOrEof = () <$ P.newline <|> P.eof
+
+handleNesting :: TemplateMonad m
+              => P.SourcePos -> Template -> Parser m Template
+handleNesting pos templ = do
+  endofline <- (True <$ P.lookAhead pNewlineOrEof) <|> pure False
+  let toNested = case P.sourceColumn pos - 1 of
+                   0 -> id
+                   _ -> Nested
+  return $ if endofline
+              then toNested templ
+              else templ
 
 pBarePartial :: TemplateMonad m
              => Parser m Template
@@ -216,10 +224,7 @@ pBarePartial = do
   res <- pPartial Nothing fp
   P.skipMany pSpaceOrTab
   closer
-  let toNested = case P.sourceColumn pos - 1 of
-                   0 -> id
-                   _ -> Nested
-  return $ toNested res
+  handleNesting pos res
 
 pPartialName :: TemplateMonad m
              => Parser m FilePath
