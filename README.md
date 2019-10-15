@@ -113,9 +113,9 @@ the following conversions are done:
 - If the value is a JSON boolean, it will be rendered as `true`
   if true, and as the empty string if false.
 
-The value of a variable that occurs by itself on a line
-will be indented to the same level as the opening delimiter of
-the variable.
+If variable's value contains multiple lines, it will be
+rendered so that subsequent lines are indented to the
+same level as the first.
 
 ## Conditionals
 
@@ -306,25 +306,6 @@ with a short line length.${ -reflow }
 
 The `+` keyword has no effect when rendering to `Text`
 or `String`.
-
-## Nesting
-
-As noted above, the value of a variable that occurs by itself on
-a line will be indented to the same level as the opening
-delimiter of the variable.
-
-In addition, any part of a template can be marked explicitly for
-indented rendering, using the `+nest` keyword (o start nesting at
-the column where it appears) and `-nest` to stop nesting.
-
-Example:
-
-```
-$for(article)$
-- $+nest$$article.author$, "$article.title$," in $article.book$
-  ($article.year$).$-nest$
-$endfor$
-```
 
 ## Filters
 

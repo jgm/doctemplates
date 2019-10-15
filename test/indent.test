@@ -23,8 +23,8 @@ $endfor$
    LINE4
 
 - FOO1
-FOO2
+  FOO2
   FOO1
-FOO2 -
+  FOO2 -
   FOO1
-FOO2
+  FOO2

@@ -39,7 +39,6 @@ compileTemplate templPath template = do
            PState{ templatePath   = templPath
                  , partialNesting = 1
                  , indentLevel = 0
-                 , beginsLine = True
                  , breakingSpaces = False } templPath template
   case res of
        Left e   -> return $ Left $ show e
@@ -50,7 +49,6 @@ data PState =
   PState { templatePath   :: FilePath
          , partialNesting :: Int
          , indentLevel    :: Int
-         , beginsLine     :: Bool
          , breakingSpaces :: Bool }
 
 type Parser = P.ParsecT Text PState
@@ -72,14 +70,7 @@ pNewline = do
 
 pLit :: Monad m => Parser m Template
 pLit = do
-  col <- P.sourceColumn <$> P.getPosition
-  ind <- indentLevel <$> P.getState
-  -- eat up indentlevel spaces
-  P.skipMany $ P.try $ do
-    P.getPosition >>= guard . (< (ind + 1)) . P.sourceColumn
-    P.satisfy (\c -> c == ' ' || c == '\t')
   cs <- P.many1 (P.satisfy (\c -> c /= '$' && c /= '\n' && c /= '\r'))
-  P.updateState $ \st -> st{ beginsLine = col == 1 && all (==' ') cs }
   breakspaces <- breakingSpaces <$> P.getState
   if breakspaces
      then return $ toBreakable cs
@@ -112,10 +103,8 @@ pEscape = Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1)
 pDirective :: TemplateMonad m
            => Parser m Template
 pDirective = do
-  res <- pConditional <|> pForLoop <|> pReflow <|> pNest <|>
+  res <- pConditional <|> pForLoop <|> pReflow <|>
          pInterpolate <|> pBarePartial
-  col <- P.sourceColumn <$> P.getPosition
-  P.updateState $ \st -> st{ beginsLine = col == 1 }
   return res
 
 pEnclosed :: Monad m => Parser m a -> Parser m a
@@ -165,17 +154,6 @@ skipEndline = P.try $
       (P.skipMany pSpaceOrTab <* P.char '\n')
   <|> (P.skipMany1 pSpaceOrTab <* P.eof)
 
-pNest :: TemplateMonad m => Parser m Template
-pNest = do
-  col <- P.sourceColumn <$> P.getPosition
-  ind <- indentLevel <$> P.getState
-  pEnclosed $ P.string "+nest"
-  P.updateState $ \st -> st{ indentLevel = col - 1 }
-  t <- pTemplate
-  P.optional $ pEnclosed $ P.string "-nest"
-  P.updateState $ \st -> st{ indentLevel = ind }
-  return $ Nested t
-
 pReflow :: TemplateMonad m => Parser m Template
 pReflow = mempty <$ (pReflowOn <|> pReflowOff)
  where
@@ -220,7 +198,6 @@ changeToIt v = go
 pInterpolate :: TemplateMonad m
              => Parser m Template
 pInterpolate = do
-  begins <- beginsLine <$> P.getState
   pos <- P.getPosition
   -- we don't used pEnclosed here, to get better error messages:
   (closer, var) <- P.try $ do
@@ -234,17 +211,10 @@ pInterpolate = do
       <|> return (Interpolate var)
   P.skipMany pSpaceOrTab
   closer
-  ends <- P.lookAhead $ P.option False $
-             True <$ P.try (P.skipMany pSpaceOrTab *> pNewlineOrEof)
   let toNested = case P.sourceColumn pos - 1 of
                    0 -> id
                    _ -> Nested
-  case (begins && ends, res) of
-    (True, Interpolate v)
-               -> return $ toNested $ Interpolate v
-    (True, Iterate v (Interpolate v') s)
-               -> return $ toNested $ Iterate v (Interpolate v') s
-    _ -> return res
+  return $ toNested res
 
 pNewlineOrEof :: Monad m => Parser m ()
 pNewlineOrEof = () <$ P.newline <|> P.eof
@@ -317,9 +287,7 @@ pComment = do
   P.skipMany (P.satisfy (/='\n'))
   -- If the comment begins in the first column, the line ending
   -- will be consumed; otherwise not.
-  when (P.sourceColumn pos == 1) $ () <$ do
-    pNewlineOrEof
-    P.updateState $ \st -> st{ beginsLine = True }
+  when (P.sourceColumn pos == 1) $ () <$ pNewlineOrEof
 
 pOpenDollar :: Monad m => Parser m (Parser m ())
 pOpenDollar =

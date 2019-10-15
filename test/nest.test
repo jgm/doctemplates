@@ -6,10 +6,10 @@
 .
     $sup$
    $sup$
-$bim.zub$ $+nest$$sup$$-nest$
+$bim.zub$ $sup$
 
-$bim.zub$ $+nest$$foo$
-          bar $sup$$-nest$
+$bim.zub$ $foo$
+          bar $sup$
 .
     a multiline
     string
@@ -19,5 +19,5 @@ sim a multiline
     string
 
 sim 1
-    bar a multiline
-    string
+          bar a multiline
+              string
