@@ -152,7 +152,9 @@ instance TemplateTarget String where
 instance (DL.HasChars a, IsString a, Eq a)
     => TemplateTarget (DL.Doc a) where
   fromText = DL.text . T.unpack
-  toText   = T.pack . DL.foldrChar (:) [] . DL.render Nothing
+  -- special-case NewLine by itself, or it turns into ""
+  toText DL.NewLine = "\n"
+  toText x = T.pack . DL.foldrChar (:) [] . DL.render Nothing $ x
   removeFinalNewline = DL.chomp
   indent = DL.nest
   isEmpty (DL.Empty)      = True
