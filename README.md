@@ -113,10 +113,6 @@ the following conversions are done:
 - If the value is a JSON boolean, it will be rendered as `true`
   if true, and as the empty string if false.
 
-If a variable is not followed by further text or directives
-on the same line, and the variable's value contains multiple
-lines, it will be rendered so that subsequent lines are indented
-to the same level as the first.
 
 ## Conditionals
 
@@ -290,6 +286,28 @@ ${articles:bibentry()[; ]$
 The separator in this case is literal and (unlike with `sep`
 in an explicit `for` loop) cannot contain interpolated
 variables or other template directives.
+
+## Nesting
+
+To ensure that content is "nested," that is, subsequent lines
+indented, use the `^` directive:
+
+```
+$item.number$  $^$$item.description$ ($item.price$)
+```
+
+In this example, if `item.description` has multiple lines,
+they will all be indented to line up with the first line:
+
+```
+00123  A fine bottle of 18-year old
+       Oban whiskey. (148)
+```
+
+If a variable occurs by itself on a line, preceded by whitespace
+and not followed by further text or directives on the same line,
+and the variable's value contains multiple lines, it will be
+nested automatically.
 
 ## Breakable spaces
 

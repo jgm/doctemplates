@@ -35,10 +35,12 @@ import Data.Semigroup ((<>))
 compileTemplate :: TemplateMonad m
                 => FilePath -> Text -> m (Either String Template)
 compileTemplate templPath template = do
-  res <- P.runParserT (pTemplate <* P.eof)
+  res <- P.runParserT (pTemplate True <* P.eof)
            PState{ templatePath   = templPath
                  , partialNesting = 1
-                 , breakingSpaces = False } templPath template
+                 , breakingSpaces = False
+                 , firstNonspace  = P.initialPos templPath }
+           templPath template
   case res of
        Left e   -> return $ Left $ show e
        Right x  -> return $ Right x
@@ -47,28 +49,42 @@ compileTemplate templPath template = do
 data PState =
   PState { templatePath   :: FilePath
          , partialNesting :: Int
-         , breakingSpaces :: Bool }
+         , breakingSpaces :: Bool
+         , firstNonspace  :: P.SourcePos
+         }
 
 type Parser = P.ParsecT Text PState
 
-pTemplate :: TemplateMonad m => Parser m Template
-pTemplate = do
+pTemplate :: TemplateMonad m => Bool -> Parser m Template
+pTemplate allowNewlines = do
   P.skipMany pComment
   mconcat <$> many
-    ((pLit <|> pNewline <|> pDirective <|> pEscape) <* P.skipMany pComment)
+    ((pLit <|>
+      (if allowNewlines
+          then pNewline
+          else fail "no newlines allowed") <|>
+      pDirective <|>
+      pEscape) <* P.skipMany pComment)
 
 pNewline :: Monad m => Parser m Template
 pNewline = do
   nls <- P.string "\n" <|> P.string "\r" <|> P.string "\r\n"
+  sps <- P.many (P.char ' ' <|> P.char '\t')
   breakspaces <- breakingSpaces <$> P.getState
+  pos <- P.getPosition
+  P.updateState $ \st -> st{ firstNonspace = pos }
   return $
    if breakspaces
       then BreakingSpace
-      else Literal $ fromString nls
+      else Literal $ fromString $ nls <> sps
 
 pLit :: Monad m => Parser m Template
 pLit = do
   cs <- P.many1 (P.satisfy (\c -> c /= '$' && c /= '\n' && c /= '\r'))
+  when (all (\c -> c == ' ' || c == '\t') cs) $ do
+     pos <- P.getPosition
+     when (P.sourceLine pos == 1) $
+       P.updateState $ \st -> st{ firstNonspace = pos }
   breakspaces <- breakingSpaces <$> P.getState
   if breakspaces
      then return $ toBreakable cs
@@ -101,7 +117,7 @@ pEscape = Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1)
 pDirective :: TemplateMonad m
            => Parser m Template
 pDirective = do
-  res <- pConditional <|> pForLoop <|> pReflowToggle <|>
+  res <- pConditional <|> pForLoop <|> pReflowToggle <|> pNested <|>
          pInterpolate <|> pBarePartial
   return res
 
@@ -127,7 +143,7 @@ pConditional = do
   v <- pEnclosed $ P.try $ P.string "if" *> pParens pVar
   -- if newline after the "if", then a newline after "endif" will be swallowed
   multiline <- P.option False (True <$ skipEndline)
-  ifContents <- pTemplate
+  ifContents <- pTemplate True
   elseContents <- P.option mempty (pElse multiline <|> pElseIf)
   pEnclosed (P.string "endif")
   when multiline $ P.option () skipEndline
@@ -137,20 +153,23 @@ pElse :: TemplateMonad m => Bool -> Parser m Template
 pElse multiline = do
   pEnclosed (P.string "else")
   when multiline $ P.option () skipEndline
-  pTemplate
+  pTemplate True
 
 pElseIf :: TemplateMonad m => Parser m Template
 pElseIf = do
   v <- pEnclosed $ P.try $ P.string "elseif" *> pParens pVar
   multiline <- P.option False (True <$ skipEndline)
-  ifContents <- pTemplate
+  ifContents <- pTemplate True
   elseContents <- P.option mempty (pElse multiline <|> pElseIf)
   return $ Conditional v ifContents elseContents
 
 skipEndline :: Monad m => Parser m ()
-skipEndline = P.try $
-      (P.skipMany pSpaceOrTab <* P.char '\n')
-  <|> (P.skipMany1 pSpaceOrTab <* P.eof)
+skipEndline = do
+  pNewlineOrEof
+  pos <- P.lookAhead $ do
+           P.skipMany (P.char ' ' <|> P.char '\t')
+           P.getPosition
+  P.updateState $ \st -> st{ firstNonspace = pos }
 
 pReflowToggle :: TemplateMonad m => Parser m Template
 pReflowToggle = do
@@ -158,16 +177,21 @@ pReflowToggle = do
   P.modifyState $ \st -> st{ breakingSpaces = not (breakingSpaces st) }
   return mempty
 
+pNested :: TemplateMonad m => Parser m Template
+pNested = do
+  pEnclosed $ P.char '^'
+  Nested <$> pTemplate False
+
 pForLoop :: TemplateMonad m => Parser m Template
 pForLoop = do
   v <- pEnclosed $ P.try $ P.string "for" *> pParens pVar
   -- if newline after the "for", then a newline after "endfor" will be swallowed
   multiline <- P.option False $ skipEndline >> return True
-  contents <- changeToIt v <$> pTemplate
+  contents <- changeToIt v <$> pTemplate True
   sep <- P.option mempty $
            do pEnclosed (P.string "sep")
               when multiline $ P.option () skipEndline
-              changeToIt v <$> pTemplate
+              changeToIt v <$> pTemplate True
   pEnclosed (P.string "endfor")
   when multiline $ P.option () skipEndline
   return $ Iterate v contents sep
@@ -208,16 +232,19 @@ pInterpolate = do
   handleNesting pos res
 
 pNewlineOrEof :: Monad m => Parser m ()
-pNewlineOrEof = () <$ P.newline <|> P.eof
+pNewlineOrEof =
+  () <$ (P.string "\n" <|> P.string "\r" <|> P.string "\r\n") <|> P.eof
 
 handleNesting :: TemplateMonad m
               => P.SourcePos -> Template -> Parser m Template
 handleNesting pos templ = do
+  firstNonspacePos <- firstNonspace <$> P.getState
+  let beginline = firstNonspacePos == pos
   endofline <- (True <$ P.lookAhead pNewlineOrEof) <|> pure False
   let toNested = case P.sourceColumn pos - 1 of
                    0 -> id
                    _ -> Nested
-  return $ if endofline
+  return $ if beginline && endofline
               then toNested templ
               else templ
 
@@ -245,6 +272,7 @@ pPartialName = P.try $ do
 pPartial :: TemplateMonad m
          => Maybe Variable -> FilePath -> Parser m Template
 pPartial mbvar fp = do
+  oldst <- P.getState
   separ <- P.option mempty pSep
   tp <- templatePath <$> P.getState
   let fp' = case takeExtension fp of
@@ -260,11 +288,12 @@ pPartial mbvar fp = do
             P.setPosition $ P.initialPos fp'
             P.setInput partial
             P.updateState $ \st -> st{ partialNesting = nesting + 1 }
-            res' <- pTemplate <* P.eof
+            res' <- pTemplate True <* P.eof
             P.updateState $ \st -> st{ partialNesting = nesting }
             P.setInput oldInput
             P.setPosition oldPos
             return res'
+  P.putState oldst
   case mbvar of
     Just var -> return $ Iterate var t separ
     Nothing  -> return $ Partial t

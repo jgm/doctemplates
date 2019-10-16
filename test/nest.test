@@ -6,10 +6,10 @@
 .
     $sup$
    $sup$
-$bim.zub$ $sup$
+$bim.zub$ $^$$sup$
 
-$bim.zub$ $foo$
-          bar $sup$
+$bim.zub$ $^$$foo$
+          $^$bar $sup$
 .
     a multiline
     string
@@ -20,4 +20,4 @@ sim a multiline
 
 sim 1
           bar a multiline
-              string
+          string
