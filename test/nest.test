@@ -9,7 +9,7 @@
 $bim.zub$ $^$$sup$
 
 $bim.zub$ $^$$foo$
-          $^$bar $sup$
+          $|$bar $sup$
 .
     a multiline
     string
@@ -19,5 +19,5 @@ sim a multiline
     string
 
 sim 1
-          bar a multiline
-          string
+    bar a multiline
+    string

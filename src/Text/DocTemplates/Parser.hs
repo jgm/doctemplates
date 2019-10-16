@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE BangPatterns #-}
 {- |
    Module      : Text.DocTemplates.Parser
    Copyright   : Copyright (C) 2009-2019 John MacFarlane
@@ -35,12 +36,13 @@ import Data.Semigroup ((<>))
 compileTemplate :: TemplateMonad m
                 => FilePath -> Text -> m (Either String Template)
 compileTemplate templPath template = do
-  res <- P.runParserT (pTemplate True <* P.eof)
+  res <- P.runParserT (pTemplate <* P.eof)
            PState{ templatePath   = templPath
                  , partialNesting = 1
                  , breakingSpaces = False
-                 , firstNonspace  = P.initialPos templPath }
-           templPath template
+                 , firstNonspace  = P.initialPos templPath
+                 , nested         = False
+                 } templPath template
   case res of
        Left e   -> return $ Left $ show e
        Right x  -> return $ Right x
@@ -48,35 +50,37 @@ compileTemplate templPath template = do
 
 data PState =
   PState { templatePath   :: FilePath
-         , partialNesting :: Int
-         , breakingSpaces :: Bool
+         , partialNesting :: !Int
+         , breakingSpaces :: !Bool
          , firstNonspace  :: P.SourcePos
+         , nested         :: !Bool
          }
 
 type Parser = P.ParsecT Text PState
 
-pTemplate :: TemplateMonad m => Bool -> Parser m Template
-pTemplate allowNewlines = do
+pTemplate :: TemplateMonad m => Parser m Template
+pTemplate = do
   P.skipMany pComment
   mconcat <$> many
-    ((pLit <|>
-      (if allowNewlines
-          then pNewline
-          else fail "no newlines allowed") <|>
-      pDirective <|>
+    ((pLit <|> pNewline <|> pDirective <|>
       pEscape) <* P.skipMany pComment)
 
 pNewline :: Monad m => Parser m Template
-pNewline = do
+pNewline = P.try $ do
   nls <- P.string "\n" <|> P.string "\r" <|> P.string "\r\n"
   sps <- P.many (P.char ' ' <|> P.char '\t')
+  isNested <- nested <$> P.getState
+  when isNested $ () <$ pEnclosed (P.char '|')
   breakspaces <- breakingSpaces <$> P.getState
   pos <- P.getPosition
   P.updateState $ \st -> st{ firstNonspace = pos }
   return $
    if breakspaces
       then BreakingSpace
-      else Literal $ fromString $ nls <> sps
+      else Literal $ fromString $ nls <>
+                                  if isNested
+                                     then mempty
+                                     else sps
 
 pLit :: Monad m => Parser m Template
 pLit = do
@@ -143,7 +147,7 @@ pConditional = do
   v <- pEnclosed $ P.try $ P.string "if" *> pParens pVar
   -- if newline after the "if", then a newline after "endif" will be swallowed
   multiline <- P.option False (True <$ skipEndline)
-  ifContents <- pTemplate True
+  ifContents <- pTemplate
   elseContents <- P.option mempty (pElse multiline <|> pElseIf)
   pEnclosed (P.string "endif")
   when multiline $ P.option () skipEndline
@@ -153,13 +157,13 @@ pElse :: TemplateMonad m => Bool -> Parser m Template
 pElse multiline = do
   pEnclosed (P.string "else")
   when multiline $ P.option () skipEndline
-  pTemplate True
+  pTemplate
 
 pElseIf :: TemplateMonad m => Parser m Template
 pElseIf = do
   v <- pEnclosed $ P.try $ P.string "elseif" *> pParens pVar
   multiline <- P.option False (True <$ skipEndline)
-  ifContents <- pTemplate True
+  ifContents <- pTemplate
   elseContents <- P.option mempty (pElse multiline <|> pElseIf)
   return $ Conditional v ifContents elseContents
 
@@ -180,18 +184,22 @@ pReflowToggle = do
 pNested :: TemplateMonad m => Parser m Template
 pNested = do
   pEnclosed $ P.char '^'
-  Nested <$> pTemplate False
+  oldNested <- nested <$> P.getState
+  P.updateState $ \st -> st{ nested = True }
+  contents <- pTemplate
+  P.updateState $ \st -> st{ nested = oldNested }
+  return $ Nested contents
 
 pForLoop :: TemplateMonad m => Parser m Template
 pForLoop = do
   v <- pEnclosed $ P.try $ P.string "for" *> pParens pVar
   -- if newline after the "for", then a newline after "endfor" will be swallowed
   multiline <- P.option False $ skipEndline >> return True
-  contents <- changeToIt v <$> pTemplate True
+  contents <- changeToIt v <$> pTemplate
   sep <- P.option mempty $
            do pEnclosed (P.string "sep")
               when multiline $ P.option () skipEndline
-              changeToIt v <$> pTemplate True
+              changeToIt v <$> pTemplate
   pEnclosed (P.string "endfor")
   when multiline $ P.option () skipEndline
   return $ Iterate v contents sep
@@ -288,7 +296,7 @@ pPartial mbvar fp = do
             P.setPosition $ P.initialPos fp'
             P.setInput partial
             P.updateState $ \st -> st{ partialNesting = nesting + 1 }
-            res' <- pTemplate True <* P.eof
+            res' <- pTemplate <* P.eof
             P.updateState $ \st -> st{ partialNesting = nesting }
             P.setInput oldInput
             P.setPosition oldPos

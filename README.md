@@ -301,8 +301,27 @@ they will all be indented to line up with the first line:
 
 ```
 00123  A fine bottle of 18-year old
-       Oban whiskey. (148)
+       Oban whiskey. ($148)
 ```
+
+To nest multiple lines, use the `|` directive underneath
+the `^`.  All of the lines with `|` will be nested to
+the same level as the content beginning with `^`. For
+example,
+
+```
+$item.number$  $^$$item.description$ ($item.price$)
+               $|$(Available til $item.sellby$.)
+```
+
+will produce
+
+```
+00123  A fine bottle of 18-year old
+       Oban whiskey. ($148)
+       (Available til March 30, 2020.)
+```
+
 
 If a variable occurs by itself on a line, preceded by whitespace
 and not followed by further text or directives on the same line,
