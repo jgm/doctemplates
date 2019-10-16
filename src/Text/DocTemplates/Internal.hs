@@ -307,7 +307,7 @@ applyFilter ToPairs val =
                     , ("value", v) ]
 
 multiLookup :: TemplateTarget a => [Filter] -> [Text] -> Val a -> Val a
-multiLookup fs [] x = foldr applyFilter x fs
+multiLookup fs [] x = foldr applyFilter x $ reverse fs
 multiLookup fs (t:vs) (MapVal (Context o)) =
   case M.lookup t o of
     Nothing -> NullVal
