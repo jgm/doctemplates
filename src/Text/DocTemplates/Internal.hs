@@ -40,6 +40,8 @@ import Data.Aeson (Value(..), ToJSON(..), FromJSON(..), Result(..), fromJSON)
 import Data.YAML (ToYAML(..), FromYAML(..), Node(..), Scalar(..))
 import Control.Monad.Identity
 import qualified Control.Monad.State.Strict as S
+import Data.Char (chr, ord)
+import qualified Data.Text.Read as T
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.IO as TIO
@@ -58,6 +60,7 @@ import Data.List (intersperse, intercalate)
 #else
 import Data.Semigroup
 #endif
+-- import Debug.Trace
 
 -- | A template.
 data Template =
@@ -86,6 +89,8 @@ data Filter =
     | ToUppercase
     | ToLowercase
     | ToLength
+    | Reverse
+    | ToAlpha
     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
 -- | A variable which may have several parts (@foo.bar.baz@).
@@ -305,6 +310,19 @@ applyFilter ToPairs val =
   toPair (k, v) = MapVal $ Context $ M.fromList
                     [ ("key", SimpleVal (fromText k))
                     , ("value", v) ]
+applyFilter Reverse val =
+  case val of
+    SimpleVal t -> SimpleVal $ fromText . T.reverse . toText $ t
+    ListVal xs  -> ListVal (reverse xs)
+    _           -> val
+applyFilter ToAlpha val =
+  case val of
+    SimpleVal t ->
+      case T.decimal (toText t) of
+        Right (y,"") -> SimpleVal $ fromText $ T.singleton
+                         (chr (ord 'a' + (y `mod` 26) - 1))
+        _            -> SimpleVal t
+    _           -> val
 
 multiLookup :: TemplateTarget a => [Filter] -> [Text] -> Val a -> Val a
 multiLookup fs [] x = foldr applyFilter x $ reverse fs

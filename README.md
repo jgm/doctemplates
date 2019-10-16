@@ -363,8 +363,8 @@ $endfor$
 Filters may be chained:
 
 ```
-$for(name)$
-$name/uppercase/length$
+$for(employees/pairs)$
+$it.key/alpha/uppercase$. $it.name$
 $endfor$
 ```
 
@@ -384,4 +384,14 @@ Currently the following filters are predefined:
 - `length`:  Returns the length of the value:  number
   of characters for a textual value, number of elements
   for a map or array.
+
+- `reverse`:  Reverses a textual value or array,
+  and has no effect on other values.
+
+- `alpha`:  Converts a textual value that can be
+  read as an integer into a lowercase alphabetic
+  character `a..z` (mod 26), and has no effect on
+  other values.  This can be used to get lettered
+  enumeration from array indices.  To get uppercase
+  letters, chain with `uppercase`.
 

@@ -31,7 +31,7 @@ $for(baz/pairs)$
 $it.key$. $it.value$
 $endfor$
 
-$items/pairs:enum()$
+$items/pairs/reverse:enum()$
 .
 0
 2
@@ -54,9 +54,9 @@ Zub: sim
 1. a
 2. b
 
-1.  one with
+C.  three with
     a line break
-2.  two
-3.  three with
+B.  two
+A.  one with
     a line break
 

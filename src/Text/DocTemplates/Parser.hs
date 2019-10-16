@@ -363,7 +363,10 @@ pFilter = do
       [ ("uppercase", ToUppercase)
       , ("lowercase", ToLowercase)
       , ("pairs", ToPairs)
-      , ("length", ToLength) ]
+      , ("length", ToLength)
+      , ("alpha", ToAlpha)
+      , ("reverse", Reverse)
+      ]
 
 pIt :: Monad m => Parser m Text
 pIt = fromString <$> P.try (P.string "it")
