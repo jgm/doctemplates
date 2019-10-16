@@ -55,11 +55,20 @@ pTemplate :: TemplateMonad m => Parser m Template
 pTemplate = do
   P.skipMany pComment
   mconcat <$> many
-    ((pLit <|> pDirective <|> pEscape) <* P.skipMany pComment)
+    ((pLit <|> pNewline <|> pDirective <|> pEscape) <* P.skipMany pComment)
+
+pNewline :: Monad m => Parser m Template
+pNewline = do
+  nls <- P.string "\n" <|> P.string "\r" <|> P.string "\r\n"
+  breakspaces <- breakingSpaces <$> P.getState
+  return $
+   if breakspaces
+      then BreakingSpace
+      else Literal $ fromString nls
 
 pLit :: Monad m => Parser m Template
 pLit = do
-  cs <- P.many1 (P.satisfy (/= '$'))
+  cs <- P.many1 (P.satisfy (\c -> c /= '$' && c /= '\n' && c /= '\r'))
   breakspaces <- breakingSpaces <$> P.getState
   if breakspaces
      then return $ toBreakable cs
