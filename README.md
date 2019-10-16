@@ -304,14 +304,12 @@ they will all be indented to line up with the first line:
        Oban whiskey. ($148)
 ```
 
-To nest multiple lines, use the `|` directive underneath
-the `^`.  All of the lines with `|` will be nested to
-the same level as the content beginning with `^`. For
-example,
+To nest multiple lines to the same level, align them
+with the `^` directive in the template. For example:
 
 ```
 $item.number$  $^$$item.description$ ($item.price$)
-               $|$(Available til $item.sellby$.)
+               (Available til $item.sellby$.)
 ```
 
 will produce

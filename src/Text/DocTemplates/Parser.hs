@@ -41,7 +41,7 @@ compileTemplate templPath template = do
                  , partialNesting = 1
                  , breakingSpaces = False
                  , firstNonspace  = P.initialPos templPath
-                 , nested         = False
+                 , nestedCol      = Nothing
                  } templPath template
   case res of
        Left e   -> return $ Left $ show e
@@ -53,7 +53,7 @@ data PState =
          , partialNesting :: !Int
          , breakingSpaces :: !Bool
          , firstNonspace  :: P.SourcePos
-         , nested         :: !Bool
+         , nestedCol      :: Maybe Int
          }
 
 type Parser = P.ParsecT Text PState
@@ -69,8 +69,10 @@ pNewline :: Monad m => Parser m Template
 pNewline = P.try $ do
   nls <- P.string "\n" <|> P.string "\r" <|> P.string "\r\n"
   sps <- P.many (P.char ' ' <|> P.char '\t')
-  isNested <- nested <$> P.getState
-  when isNested $ () <$ pEnclosed (P.char '|')
+  mbNested <- nestedCol <$> P.getState
+  case mbNested of
+    Just col -> P.getPosition >>= guard . (== col) . P.sourceColumn
+    Nothing  ->  return ()
   breakspaces <- breakingSpaces <$> P.getState
   pos <- P.getPosition
   P.updateState $ \st -> st{ firstNonspace = pos }
@@ -78,9 +80,9 @@ pNewline = P.try $ do
    if breakspaces
       then BreakingSpace
       else Literal $ fromString $ nls <>
-                                  if isNested
-                                     then mempty
-                                     else sps
+                                  case mbNested of
+                                     Nothing -> sps
+                                     Just _  -> mempty
 
 pLit :: Monad m => Parser m Template
 pLit = do
@@ -183,12 +185,13 @@ pReflowToggle = do
 
 pNested :: TemplateMonad m => Parser m Template
 pNested = do
+  col <- P.sourceColumn <$> P.getPosition
   pEnclosed $ P.char '^'
-  oldNested <- nested <$> P.getState
-  P.updateState $ \st -> st{ nested = True }
+  oldNested <- nestedCol <$> P.getState
+  P.updateState $ \st -> st{ nestedCol = Just col }
   contents <- pTemplate
-  P.updateState $ \st -> st{ nested = oldNested }
-  return $ Nested contents
+  P.updateState $ \st -> st{ nestedCol = oldNested }
+  return $ Nested $ contents
 
 pForLoop :: TemplateMonad m => Parser m Template
 pForLoop = do
@@ -239,9 +242,11 @@ pInterpolate = do
   closer
   handleNesting pos res
 
+pLineEnding :: Monad m => Parser m String
+pLineEnding = P.string "\n" <|> P.string "\r" <|> P.string "\r\n"
+
 pNewlineOrEof :: Monad m => Parser m ()
-pNewlineOrEof =
-  () <$ (P.string "\n" <|> P.string "\r" <|> P.string "\r\n") <|> P.eof
+pNewlineOrEof = () <$ pLineEnding <|> P.eof
 
 handleNesting :: TemplateMonad m
               => P.SourcePos -> Template -> Parser m Template
@@ -296,6 +301,7 @@ pPartial mbvar fp = do
             P.setPosition $ P.initialPos fp'
             P.setInput partial
             P.updateState $ \st -> st{ partialNesting = nesting + 1 }
+            P.updateState $ \st -> st{ nestedCol = Nothing }
             res' <- pTemplate <* P.eof
             P.updateState $ \st -> st{ partialNesting = nesting }
             P.setInput oldInput

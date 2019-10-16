@@ -9,7 +9,7 @@
 $bim.zub$ $^$$sup$
 
 $bim.zub$ $^$$foo$
-          $|$bar $sup$
+          bar $sup$
 .
     a multiline
     string
