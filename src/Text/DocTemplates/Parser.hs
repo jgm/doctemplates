@@ -37,11 +37,12 @@ compileTemplate :: TemplateMonad m
                 => FilePath -> Text -> m (Either String Template)
 compileTemplate templPath template = do
   res <- P.runParserT (pTemplate <* P.eof)
-           PState{ templatePath   = templPath
-                 , partialNesting = 1
-                 , breakingSpaces = False
-                 , firstNonspace  = P.initialPos templPath
-                 , nestedCol      = Nothing
+           PState{ templatePath    = templPath
+                 , partialNesting  = 1
+                 , breakingSpaces  = False
+                 , firstNonspace   = P.initialPos templPath
+                 , nestedCol       = Nothing
+                 , insideDirective = False
                  } templPath template
   case res of
        Left e   -> return $ Left $ show e
@@ -49,11 +50,12 @@ compileTemplate templPath template = do
 
 
 data PState =
-  PState { templatePath   :: FilePath
-         , partialNesting :: !Int
-         , breakingSpaces :: !Bool
-         , firstNonspace  :: P.SourcePos
-         , nestedCol      :: Maybe Int
+  PState { templatePath    :: FilePath
+         , partialNesting  :: !Int
+         , breakingSpaces  :: !Bool
+         , firstNonspace   :: P.SourcePos
+         , nestedCol       :: Maybe Int
+         , insideDirective :: Bool
          }
 
 type Parser = P.ParsecT Text PState
@@ -70,12 +72,16 @@ pEndline :: Monad m => Parser m String
 pEndline = P.try $ do
   nls <- P.string "\n" <|> P.string "\r" <|> P.string "\r\n"
   mbNested <- nestedCol <$> P.getState
+  inside <- insideDirective <$> P.getState
   case mbNested of
     Just col -> do
       P.skipMany $ do
         P.getPosition >>= guard . (< col) . P.sourceColumn
         P.char ' ' <|> P.char '\t'
-      P.getPosition >>= guard . (>= col) . P.sourceColumn
+      curcol <- P.sourceColumn <$> P.getPosition
+      if inside
+         then guard (curcol >= 0) <|> P.lookAhead pNewlineOrEof
+         else guard (curcol >= col)
     Nothing  ->  return ()
   return nls
 
@@ -150,17 +156,28 @@ pParens parser = do
   P.char ')'
   return result
 
+pInside :: Monad m
+        => Parser m Template
+        -> Parser m Template
+pInside parser = do
+  oldInside <- insideDirective <$> P.getState
+  P.updateState $ \st -> st{ insideDirective = True }
+  res <- parser
+  P.updateState $ \st -> st{ insideDirective = oldInside }
+  return res
+
 pConditional :: TemplateMonad m
              => Parser m Template
 pConditional = do
   v <- pEnclosed $ P.try $ P.string "if" *> pParens pVar
-  -- if newline after the "if", then a newline after "endif" will be swallowed
-  multiline <- P.option False (True <$ skipEndline)
-  ifContents <- pTemplate
-  elseContents <- P.option mempty (pElse multiline <|> pElseIf)
-  pEnclosed (P.string "endif")
-  when multiline $ P.option () skipEndline
-  return $ Conditional v ifContents elseContents
+  pInside $ do
+    multiline <- P.option False (True <$ skipEndline)
+    -- if newline after the "if", then a newline after "endif" will be swallowed
+    ifContents <- pTemplate
+    elseContents <- P.option mempty (pElse multiline <|> pElseIf)
+    pEnclosed (P.string "endif")
+    when multiline $ P.option () skipEndline
+    return $ Conditional v ifContents elseContents
 
 pElse :: TemplateMonad m => Bool -> Parser m Template
 pElse multiline = do
@@ -204,15 +221,16 @@ pForLoop :: TemplateMonad m => Parser m Template
 pForLoop = do
   v <- pEnclosed $ P.try $ P.string "for" *> pParens pVar
   -- if newline after the "for", then a newline after "endfor" will be swallowed
-  multiline <- P.option False $ skipEndline >> return True
-  contents <- changeToIt v <$> pTemplate
-  sep <- P.option mempty $
-           do pEnclosed (P.string "sep")
-              when multiline $ P.option () skipEndline
-              changeToIt v <$> pTemplate
-  pEnclosed (P.string "endfor")
-  when multiline $ P.option () skipEndline
-  return $ Iterate v contents sep
+  pInside $ do
+    multiline <- P.option False $ skipEndline >> return True
+    contents <- changeToIt v <$> pTemplate
+    sep <- P.option mempty $
+             do pEnclosed (P.string "sep")
+                when multiline $ P.option () skipEndline
+                changeToIt v <$> pTemplate
+    pEnclosed (P.string "endfor")
+    when multiline $ P.option () skipEndline
+    return $ Iterate v contents sep
 
 changeToIt :: Variable -> Template -> Template
 changeToIt v = go
