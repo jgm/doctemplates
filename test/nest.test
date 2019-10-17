@@ -24,6 +24,13 @@ $endfor$
   $^$hey $sup$
 
   hey $sup$
+
+  $^$hey
+  $if(foo)$
+
+  $foo$
+  $endif$
+  hey
 .
     a multiline
     string
@@ -51,3 +58,8 @@ sim 1
 
   hey a multiline
 string
+
+  hey
+  
+  1
+  hey
