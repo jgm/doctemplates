@@ -21,11 +21,9 @@ $endfor$
   $^$hey $sup$
   hey $sup$
 
-  $^$hey $sup$
-
   hey $sup$
 
-  $^$hey
+  hey
   $if(foo)$
 
   $foo$
@@ -56,10 +54,7 @@ sim 1
   hey a multiline
   string
 
-  hey a multiline
-string
-
   hey
-  
+
   1
   hey

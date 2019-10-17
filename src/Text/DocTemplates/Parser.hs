@@ -67,10 +67,9 @@ pTemplate = do
     ((pLit <|> pNewline <|> pDirective <|>
       pEscape) <* P.skipMany pComment)
 
-
 pEndline :: Monad m => Parser m String
 pEndline = P.try $ do
-  nls <- P.string "\n" <|> P.string "\r" <|> P.string "\r\n"
+  nls <- pLineEnding
   mbNested <- nestedCol <$> P.getState
   inside <- insideDirective <$> P.getState
   case mbNested of
@@ -84,6 +83,10 @@ pEndline = P.try $ do
          else guard (curcol >= col)
     Nothing  ->  return ()
   return nls
+
+pBlankLine :: Monad m => Parser m Template
+pBlankLine =
+  P.try $ Literal . fromString <$> pLineEnding <* P.lookAhead pNewlineOrEof
 
 pNewline :: Monad m => Parser m Template
 pNewline = P.try $ do
@@ -213,7 +216,12 @@ pNested = do
   pEnclosed $ P.char '^'
   oldNested <- nestedCol <$> P.getState
   P.updateState $ \st -> st{ nestedCol = Just col }
-  contents <- pTemplate
+  x <- pTemplate
+  xs <- P.many $ P.try $ do
+          y <- mconcat <$> P.many1 pBlankLine
+          z <- pTemplate
+          return (y <> z)
+  let contents = x <> mconcat xs
   P.updateState $ \st -> st{ nestedCol = oldNested }
   return $ Nested $ contents
 
@@ -268,7 +276,7 @@ pInterpolate = do
   handleNesting pos res
 
 pLineEnding :: Monad m => Parser m String
-pLineEnding = P.string "\n" <|> P.string "\r" <|> P.string "\r\n"
+pLineEnding = P.string "\n" <|> P.try (P.string "\r\n") <|> P.string "\r"
 
 pNewlineOrEof :: Monad m => Parser m ()
 pNewlineOrEof = () <$ pLineEnding <|> P.eof

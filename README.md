@@ -320,16 +320,6 @@ will produce
        (Available til March 30, 2020.)
 ```
 
-Note that if the nested template contains a blank line,
-the `^` directive must be repeated after the blank line:
-
-```
-- $^$$item.description$
-  ($item.price$)
-
-  $^$$item.sellby$
-```
-
 If a variable occurs by itself on a line, preceded by whitespace
 and not followed by further text or directives on the same line,
 and the variable's value contains multiple lines, it will be
