@@ -17,6 +17,11 @@ $for(baz)$
      $it$
    $endif$
 $endfor$
+
+  $^$hey $sup$
+  hey $sup$
+
+  hey $sup$
 .
     a multiline
     string
@@ -33,3 +38,11 @@ sim 1
      a
 1. Hello
      b
+
+  hey a multiline
+  string
+  hey a multiline
+  string
+
+  hey a multiline
+  string
