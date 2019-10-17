@@ -21,6 +21,8 @@ $endfor$
   $^$hey $sup$
   hey $sup$
 
+  $^$hey $sup$
+
   hey $sup$
 .
     a multiline
@@ -46,3 +48,6 @@ sim 1
 
   hey a multiline
   string
+
+  hey a multiline
+string
