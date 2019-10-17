@@ -129,7 +129,7 @@ instance TemplateTarget Text where
     | ind == 0  = t
     | T.null t  = t
     | otherwise = T.intercalate "\n" $
-                     case T.lines t of
+                     case T.splitOn "\n" t of
                        (x:xs) -> x : map
                                      (\z -> if T.null z
                                                then z
@@ -150,7 +150,7 @@ instance TemplateTarget TL.Text where
     | ind == 0  = t
     | TL.null t = t
     | otherwise = TL.intercalate "\n" $
-                     case TL.lines t of
+                     case TL.splitOn "\n" t of
                        (x:xs) -> x : map
                                      (\z -> if TL.null z
                                                then z
@@ -172,7 +172,7 @@ instance TemplateTarget String where
     | ind == 0  = t
     | null t  = t
     | otherwise = intercalate "\n" $
-                    case lines t of
+                    case splitWhen (=='\n') t of
                        (x:xs) -> x : map
                                      (\z -> if null z
                                                then z
@@ -180,6 +180,12 @@ instance TemplateTarget String where
                                      xs
                        xs     -> xs
   breakingSpace = " "
+
+splitWhen :: (a -> Bool) -> [a] -> [[a]]
+splitWhen f xs =
+  case break f xs of
+    (xs, _:ys) -> xs : splitWhen f ys
+    (xs, [])   -> [xs]
 
 instance (DL.HasChars a, IsString a, Eq a)
     => TemplateTarget (DL.Doc a) where
