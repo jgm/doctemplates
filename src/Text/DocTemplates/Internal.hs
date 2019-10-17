@@ -125,8 +125,17 @@ instance TemplateTarget Text where
       Just (t', '\n') -> t'
       _               -> t
   isEmpty    = T.null
-  indent 0   = id
-  indent ind = T.intercalate ("\n" <> T.replicate ind " ") . T.lines
+  indent ind t
+    | ind == 0  = t
+    | T.null t  = t
+    | otherwise = T.intercalate "\n" $
+                     case T.lines t of
+                       (x:xs) -> x : map
+                                     (\z -> if T.null z
+                                               then z
+                                               else T.replicate ind " " <> z)
+                                     xs
+                       xs     -> xs
   breakingSpace = " "
 
 instance TemplateTarget TL.Text where
@@ -137,9 +146,18 @@ instance TemplateTarget TL.Text where
       Just (t', '\n') -> t'
       _               -> t
   isEmpty    = TL.null
-  indent 0   = id
-  indent ind = TL.intercalate ("\n" <> TL.replicate (fromIntegral ind) " ")
-               . TL.lines
+  indent ind t
+    | ind == 0  = t
+    | TL.null t = t
+    | otherwise = TL.intercalate "\n" $
+                     case TL.lines t of
+                       (x:xs) -> x : map
+                                     (\z -> if TL.null z
+                                               then z
+                                               else TL.replicate
+                                                    (fromIntegral ind) " " <> z)
+                                     xs
+                       xs     -> xs
   breakingSpace = " "
 
 instance TemplateTarget String where
@@ -150,8 +168,17 @@ instance TemplateTarget String where
       Just '\n'       -> initDef t t
       _               -> t
   isEmpty    = null
-  indent 0   = id
-  indent ind = intercalate ("\n" <> replicate ind ' ') . lines
+  indent ind t
+    | ind == 0  = t
+    | null t  = t
+    | otherwise = intercalate "\n" $
+                    case lines t of
+                       (x:xs) -> x : map
+                                     (\z -> if null z
+                                               then z
+                                               else replicate ind ' ' <> z)
+                                     xs
+                       xs     -> xs
   breakingSpace = " "
 
 instance (DL.HasChars a, IsString a, Eq a)
