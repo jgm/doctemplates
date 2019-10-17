@@ -10,6 +10,13 @@ $bim.zub$ $^$$sup$
 
 $bim.zub$ $^$$foo$
           bar $sup$
+
+$for(baz)$
+1. $^$Hello
+   $if(it)$
+     $it$
+   $endif$
+$endfor$
 .
     a multiline
     string
@@ -21,3 +28,8 @@ sim a multiline
 sim 1
     bar a multiline
     string
+
+1. Hello
+     a
+1. Hello
+     b
