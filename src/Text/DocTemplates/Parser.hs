@@ -65,24 +65,31 @@ pTemplate = do
     ((pLit <|> pNewline <|> pDirective <|>
       pEscape) <* P.skipMany pComment)
 
-pNewline :: Monad m => Parser m Template
-pNewline = P.try $ do
+
+pEndline :: Monad m => Parser m String
+pEndline = P.try $ do
   nls <- P.string "\n" <|> P.string "\r" <|> P.string "\r\n"
-  sps <- P.many (P.char ' ' <|> P.char '\t')
   mbNested <- nestedCol <$> P.getState
   case mbNested of
-    Just col -> P.getPosition >>= guard . (== col) . P.sourceColumn
+    Just col -> do
+      P.skipMany $ do
+        P.getPosition >>= guard . (< col) . P.sourceColumn
+        P.char ' ' <|> P.char '\t'
+      P.getPosition >>= guard . (>= col) . P.sourceColumn
     Nothing  ->  return ()
+  return nls
+
+pNewline :: Monad m => Parser m Template
+pNewline = P.try $ do
+  nls <- pEndline
+  sps <- P.many (P.char ' ' <|> P.char '\t')
   breakspaces <- breakingSpaces <$> P.getState
   pos <- P.getPosition
   P.updateState $ \st -> st{ firstNonspace = pos }
   return $
    if breakspaces
       then BreakingSpace
-      else Literal $ fromString $ nls <>
-                                  case mbNested of
-                                     Nothing -> sps
-                                     Just _  -> mempty
+      else Literal $ fromString $ nls <> sps
 
 pLit :: Monad m => Parser m Template
 pLit = do
@@ -171,7 +178,7 @@ pElseIf = do
 
 skipEndline :: Monad m => Parser m ()
 skipEndline = do
-  pNewlineOrEof
+  pEndline
   pos <- P.lookAhead $ do
            P.skipMany (P.char ' ' <|> P.char '\t')
            P.getPosition
