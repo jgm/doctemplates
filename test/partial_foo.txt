@@ -1,3 +1,4 @@
+Hello
 $if(foo)$
 $foo$
 $endif$
