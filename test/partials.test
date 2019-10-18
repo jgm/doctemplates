@@ -17,7 +17,9 @@ $employee:name()$
 
 $employee:name.tex()[; ]$
 
+---
   $boilerplate()$
+---
 .
 (John) Doe
 (Omar) Smith
@@ -29,5 +31,7 @@ $employee:name.tex()[; ]$
 
 \name{John}{Doe}; \name{Omar}{Smith}; \name{Sara}{Chen}
 
+---
   BOILERPLATE
   HERE
+---
