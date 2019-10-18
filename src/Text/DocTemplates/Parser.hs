@@ -285,9 +285,11 @@ handleNesting pos templ = do
   firstNonspacePos <- firstNonspace <$> P.getState
   let beginline = firstNonspacePos == pos
   endofline <- (True <$ P.lookAhead pNewlineOrEof) <|> pure False
-  let toNested = case P.sourceColumn pos - 1 of
-                   0 -> id
-                   _ -> Nested
+  mbNested <- nestedCol <$> P.getState
+  let toNested = case P.sourceColumn pos of
+                   1 -> id
+                   n | Just n == mbNested -> id
+                     | otherwise          -> Nested
   return $ if beginline && endofline
               then toNested templ
               else templ
