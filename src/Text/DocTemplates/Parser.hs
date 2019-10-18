@@ -271,7 +271,7 @@ pInterpolate = do
       <|> return (Interpolate var)
   P.skipMany pSpaceOrTab
   closer
-  handleNesting pos res
+  handleNesting False pos res
 
 pLineEnding :: Monad m => Parser m String
 pLineEnding = P.string "\n" <|> P.try (P.string "\r\n") <|> P.string "\r"
@@ -280,11 +280,12 @@ pNewlineOrEof :: Monad m => Parser m ()
 pNewlineOrEof = () <$ pLineEnding <|> P.eof
 
 handleNesting :: TemplateMonad m
-              => P.SourcePos -> Template -> Parser m Template
-handleNesting pos templ = do
+              => Bool -> P.SourcePos -> Template -> Parser m Template
+handleNesting eatEndline pos templ = do
   firstNonspacePos <- firstNonspace <$> P.getState
   let beginline = firstNonspacePos == pos
   endofline <- (True <$ P.lookAhead pNewlineOrEof) <|> pure False
+  when (eatEndline && beginline) $ P.optional skipEndline
   mbNested <- nestedCol <$> P.getState
   let toNested = case P.sourceColumn pos of
                    1 -> id
@@ -306,7 +307,7 @@ pBarePartial = do
   res <- pPartial Nothing fp
   P.skipMany pSpaceOrTab
   closer
-  handleNesting pos res
+  handleNesting True pos res
 
 pPartialName :: TemplateMonad m
              => Parser m FilePath
