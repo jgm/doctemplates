@@ -184,8 +184,8 @@ instance TemplateTarget String where
 splitWhen :: (a -> Bool) -> [a] -> [[a]]
 splitWhen f xs =
   case break f xs of
-    (xs, _:ys) -> xs : splitWhen f ys
-    (xs, [])   -> [xs]
+    (ys, _:zs) -> ys : splitWhen f zs
+    (ys, [])   -> [ys]
 
 instance (DL.HasChars a, IsString a, Eq a)
     => TemplateTarget (DL.Doc a) where
