@@ -78,9 +78,7 @@ pEndline = P.try $ do
         P.getPosition >>= guard . (< col) . P.sourceColumn
         P.char ' ' <|> P.char '\t'
       curcol <- P.sourceColumn <$> P.getPosition
-      if inside
-         then guard (curcol >= 0) <|> P.lookAhead pNewlineOrEof
-         else guard (curcol >= col)
+      guard $ inside || curcol >= col
     Nothing  ->  return ()
   return nls
 
