@@ -287,10 +287,11 @@ handleNesting eatEndline pos templ = do
   endofline <- (True <$ P.lookAhead pNewlineOrEof) <|> pure False
   when (eatEndline && beginline) $ P.optional skipEndline
   mbNested <- nestedCol <$> P.getState
-  let toNested = case P.sourceColumn pos of
-                   1 -> id
-                   n | Just n == mbNested -> id
-                     | otherwise          -> Nested
+  let toNested t@(Nested{}) = t
+      toNested t = case P.sourceColumn pos of
+                     1 -> t
+                     n | Just n == mbNested -> t
+                       | otherwise          -> Nested t
   return $ if beginline && endofline
               then toNested templ
               else templ

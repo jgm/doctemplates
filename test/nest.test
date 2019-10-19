@@ -6,6 +6,9 @@
 .
     $sup$
    $sup$
+
+   $^$$sup$
+
 $bim.zub$ $^$$sup$
 
 $bim.zub$ $^$$foo$
@@ -34,6 +37,10 @@ $endfor$
     string
    a multiline
    string
+
+   a multiline
+   string
+
 sim a multiline
     string
 
