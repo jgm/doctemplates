@@ -111,7 +111,6 @@ instance Monoid Variable where
 
 -- | A type to which templates can be rendered.
 class Monoid a => TemplateTarget a where
-  fromText           :: Text -> a
   toText             :: a -> Text
   removeFinalNewline :: a -> a
   isEmpty            :: a -> Bool
@@ -119,7 +118,6 @@ class Monoid a => TemplateTarget a where
   breakingSpace      :: a
 
 instance TemplateTarget Text where
-  fromText   = id
   toText     = id
   removeFinalNewline t =
     case T.unsnoc t of
@@ -140,7 +138,6 @@ instance TemplateTarget Text where
   breakingSpace = " "
 
 instance TemplateTarget TL.Text where
-  fromText   = TL.fromStrict
   toText     = TL.toStrict
   removeFinalNewline t =
     case TL.unsnoc t of
@@ -162,7 +159,6 @@ instance TemplateTarget TL.Text where
   breakingSpace = " "
 
 instance TemplateTarget String where
-  fromText   = T.unpack
   toText     = T.pack
   removeFinalNewline t =
     case lastMay t of
@@ -190,7 +186,6 @@ splitWhen f xs =
 
 instance (DL.HasChars a, IsString a, Eq a)
     => TemplateTarget (DL.Doc a) where
-  fromText = DL.text . T.unpack
   -- special-case NewLine by itself, or it turns into ""
   toText DL.NewLine = "\n"
   toText x = T.pack . DL.foldrChar (:) [] . DL.render Nothing $ x
@@ -247,7 +242,7 @@ instance ToContext a b => ToContext a (M.Map Text b) where
   toVal     = MapVal . toContext
   toContext = Context . M.map toVal
 
-instance TemplateTarget a => ToContext a Value where
+instance (IsString a, TemplateTarget a) => ToContext a Value where
   toContext x = case fromJSON x of
                   Success y -> y
                   Error _   -> mempty
@@ -255,8 +250,8 @@ instance TemplateTarget a => ToContext a Value where
                   Success y -> y
                   Error _   -> NullVal
 
-instance TemplateTarget a => ToContext a Bool where
-  toVal True  = SimpleVal $ fromText "true"
+instance (IsString a, TemplateTarget a) => ToContext a Bool where
+  toVal True  = SimpleVal "true"
   toVal False = NullVal
 
 instance (TemplateTarget a, DL.HasChars a) => ToContext (DL.Doc a) a where
@@ -287,21 +282,21 @@ instance FromContext a b => FromContext a [b] where
   fromVal (ListVal  xs) = mapM fromVal xs
   fromVal x             = sequence [fromVal x]
 
-instance TemplateTarget a => FromJSON (Val a) where
+instance (IsString a, TemplateTarget a) => FromJSON (Val a) where
   parseJSON v =
     case v of
       Array vec   -> ListVal <$> mapM parseJSON (V.toList vec)
-      String t    -> return $ SimpleVal $ fromText t
-      Number n    -> return $ SimpleVal $ fromText . fromString $
+      String t    -> return $ SimpleVal $ fromString . T.unpack $ t
+      Number n    -> return $ SimpleVal $ fromString $
                               case floatingOrInteger n of
                                   Left (r :: Double)   -> show r
                                   Right (i :: Integer) -> show i
-      Bool True   -> return $ SimpleVal $ fromText "true"
+      Bool True   -> return $ SimpleVal "true"
       Object o    -> MapVal . Context . M.fromList . H.toList <$>
                        mapM parseJSON o
       _           -> return NullVal
 
-instance TemplateTarget a => FromJSON (Context a) where
+instance (IsString a, TemplateTarget a) => FromJSON (Context a) where
   parseJSON v = do
     val <- parseJSON v
     case val of
@@ -317,8 +312,8 @@ instance TemplateTarget a => ToJSON (Val a) where
   toJSON (ListVal xs) = toJSON xs
   toJSON (SimpleVal t) = toJSON $ toText t
 
-applyFilter :: TemplateTarget a => Filter -> Val a -> Val a
-applyFilter ToLength val = SimpleVal $ fromText . T.pack . show $ len
+applyFilter :: (IsString a, TemplateTarget a) => Filter -> Val a -> Val a
+applyFilter ToLength val = SimpleVal $ fromString . show $ len
   where
    len = case val of
            SimpleVal t        -> T.length . toText $ t
@@ -327,38 +322,39 @@ applyFilter ToLength val = SimpleVal $ fromText . T.pack . show $ len
            NullVal            -> 0
 applyFilter ToUppercase val =
   case val of
-    SimpleVal t -> SimpleVal $ fromText . T.toUpper . toText $ t
+    SimpleVal t -> SimpleVal $ fromString . T.unpack . T.toUpper . toText $ t
     _           -> val
 applyFilter ToLowercase val =
   case val of
-    SimpleVal t -> SimpleVal $ fromText . T.toLower . toText $ t
+    SimpleVal t -> SimpleVal $ fromString . T.unpack . T.toLower . toText $ t
     _           -> val
 applyFilter ToPairs val =
   case val of
     MapVal (Context m) ->
       ListVal $ map toPair $ M.toList m
     ListVal xs         ->
-      ListVal $ map toPair $ zip (map (T.pack . show) [(1::Int)..]) xs
+      ListVal $ map toPair $ zip (map (fromString . show) [(1::Int)..]) xs
     _                  -> val
  where
   toPair (k, v) = MapVal $ Context $ M.fromList
-                    [ ("key", SimpleVal (fromText k))
+                    [ ("key", SimpleVal $ fromString . T.unpack $ k)
                     , ("value", v) ]
 applyFilter Reverse val =
   case val of
-    SimpleVal t -> SimpleVal $ fromText . T.reverse . toText $ t
+    SimpleVal t -> SimpleVal $ fromString . T.unpack . T.reverse . toText $ t
     ListVal xs  -> ListVal (reverse xs)
     _           -> val
 applyFilter ToAlpha val =
   case val of
     SimpleVal t ->
       case T.decimal (toText t) of
-        Right (y,"") -> SimpleVal $ fromText $ T.singleton
-                         (chr (ord 'a' + (y `mod` 26) - 1))
+        Right (y,"") -> SimpleVal $ fromString
+                         [chr (ord 'a' + (y `mod` 26) - 1)]
         _            -> SimpleVal t
     _           -> val
 
-multiLookup :: TemplateTarget a => [Filter] -> [Text] -> Val a -> Val a
+multiLookup :: (IsString a, TemplateTarget a)
+            => [Filter] -> [Text] -> Val a -> Val a
 multiLookup fs [] x = foldr applyFilter x $ reverse fs
 multiLookup fs (t:vs) (MapVal (Context o)) =
   case M.lookup t o of
@@ -366,7 +362,7 @@ multiLookup fs (t:vs) (MapVal (Context o)) =
     Just v' -> multiLookup fs vs v'
 multiLookup _ _ _ = NullVal
 
-instance TemplateTarget a => FromYAML (Val a) where
+instance (IsString a, TemplateTarget a) => FromYAML (Val a) where
   parseYAML v =
     case v of
       Mapping _ _ m -> MapVal . Context . M.fromList <$>
@@ -375,13 +371,13 @@ instance TemplateTarget a => FromYAML (Val a) where
                                   key' <- parseYAML key
                                   return (key', val')) (M.toList m)
       Sequence _ _ xs -> ListVal <$> mapM parseYAML xs
-      Scalar _ (SStr t) -> return $ SimpleVal $ fromText t
-      Scalar _ (SFloat n) -> return $ SimpleVal $ fromText . fromString . show $ n
-      Scalar _ (SInt n) -> return $ SimpleVal $ fromText . fromString . show $ n
-      Scalar _ (SBool True) -> return $ SimpleVal $ fromText "true"
+      Scalar _ (SStr t) -> return $ SimpleVal $ fromString . T.unpack $ t
+      Scalar _ (SFloat n) -> return $ SimpleVal $ fromString . show $ n
+      Scalar _ (SInt n) -> return $ SimpleVal $ fromString . show $ n
+      Scalar _ (SBool True) -> return $ SimpleVal "true"
       _           -> return NullVal
 
-instance TemplateTarget a => FromYAML (Context a) where
+instance (IsString a, TemplateTarget a) => FromYAML (Context a) where
   parseYAML v = do
     val <- parseYAML v
     case val of
@@ -397,20 +393,22 @@ instance TemplateTarget a => ToYAML (Val a) where
   toYAML (ListVal xs) = toYAML xs
   toYAML (SimpleVal t) = toYAML $ toText t
 
-resolveVariable :: TemplateTarget a => Variable -> Context a -> [a]
+resolveVariable :: (IsString a, TemplateTarget a)
+                => Variable -> Context a -> [a]
 resolveVariable v ctx = resolveVariable' v (MapVal ctx)
 
-resolveVariable' :: TemplateTarget a => Variable -> Val a -> [a]
+resolveVariable' :: (IsString a, TemplateTarget a)
+                 => Variable -> Val a -> [a]
 resolveVariable' v val =
   case multiLookup (varFilters v) (varParts v) val of
     ListVal xs    -> concatMap (resolveVariable' mempty) xs
     SimpleVal t
       | isEmpty t -> []
       | otherwise -> [removeFinalNewline t]
-    MapVal _      -> [fromText "true"]
+    MapVal _      -> ["true"]
     NullVal       -> []
 
-withVariable :: (Monad m, TemplateTarget a)
+withVariable :: (Monad m, IsString a, TemplateTarget a)
              => Variable -> Context a -> (Context a -> m a) -> m [a]
 withVariable  v ctx f =
   case multiLookup (varFilters v) (varParts v) (MapVal ctx) of
@@ -423,7 +421,7 @@ type RenderState = S.State Int
 
 -- | Render a compiled template in a "context" which provides
 -- values for the template's variables.
-renderTemplate :: (TemplateTarget a, ToContext a b)
+renderTemplate :: (TemplateTarget a, IsString a, ToContext a b)
                => Template a -> b -> a
 renderTemplate t x = S.evalState (renderTemp t (toContext x)) 0
 
@@ -436,7 +434,7 @@ updateColumn x = do
      else S.put (T.length remainder)
   return x
 
-renderTemp :: forall a . TemplateTarget a
+renderTemp :: forall a . (IsString a, TemplateTarget a)
            => Template a -> Context a -> RenderState a
 renderTemp (Literal t) _ = updateColumn $ t
 renderTemp BreakingSpace _ = updateColumn breakingSpace
