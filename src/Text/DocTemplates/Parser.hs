@@ -33,8 +33,8 @@ import Data.Semigroup ((<>))
 -- | Compile a template.  The FilePath parameter is used
 -- to determine a default path and extension for partials
 -- and may be left empty if partials are not used.
-compileTemplate :: TemplateMonad m
-                => FilePath -> Text -> m (Either String Template)
+compileTemplate :: (TemplateMonad m, IsString a, Monoid a)
+                => FilePath -> Text -> m (Either String (Template a))
 compileTemplate templPath template = do
   res <- P.runParserT (pTemplate <* P.eof)
            PState{ templatePath    = templPath
@@ -60,7 +60,7 @@ data PState =
 
 type Parser = P.ParsecT Text PState
 
-pTemplate :: TemplateMonad m => Parser m Template
+pTemplate :: (TemplateMonad m, Monoid a, IsString a) => Parser m (Template a)
 pTemplate = do
   P.skipMany pComment
   mconcat <$> many
@@ -82,11 +82,11 @@ pEndline = P.try $ do
     Nothing  ->  return ()
   return nls
 
-pBlankLine :: Monad m => Parser m Template
+pBlankLine :: (IsString a, Monad m) => Parser m (Template a)
 pBlankLine =
   P.try $ Literal . fromString <$> pLineEnding <* P.lookAhead pNewlineOrEof
 
-pNewline :: Monad m => Parser m Template
+pNewline :: (IsString a, Monad m) => Parser m (Template a)
 pNewline = P.try $ do
   nls <- pEndline
   sps <- P.many (P.char ' ' <|> P.char '\t')
@@ -98,7 +98,7 @@ pNewline = P.try $ do
       then BreakingSpace
       else Literal $ fromString $ nls <> sps
 
-pLit :: Monad m => Parser m Template
+pLit :: (IsString a, Monoid a, Monad m) => Parser m (Template a)
 pLit = do
   cs <- P.many1 (P.satisfy (\c -> c /= '$' && c /= '\n' && c /= '\r'))
   when (all (\c -> c == ' ' || c == '\t') cs) $ do
@@ -110,7 +110,7 @@ pLit = do
      then return $ toBreakable cs
      else return $ Literal $ fromString cs
 
-toBreakable :: String -> Template
+toBreakable :: (Monoid a, IsString a) => String -> Template a
 toBreakable [] = Empty
 toBreakable xs =
   case break isSpacy xs of
@@ -131,11 +131,11 @@ backupSourcePos n = do
   pos <- P.getPosition
   P.setPosition $ P.incSourceColumn pos (- n)
 
-pEscape :: Monad m => Parser m Template
+pEscape :: (IsString a, Monad m) => Parser m (Template a)
 pEscape = Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1)
 
-pDirective :: TemplateMonad m
-           => Parser m Template
+pDirective :: (IsString a, Monoid a, TemplateMonad m)
+           => Parser m (Template a)
 pDirective = do
   res <- pConditional <|> pForLoop <|> pReflowToggle <|> pNested <|>
          pInterpolate <|> pBarePartial
@@ -158,8 +158,8 @@ pParens parser = do
   return result
 
 pInside :: Monad m
-        => Parser m Template
-        -> Parser m Template
+        => Parser m (Template a)
+        -> Parser m (Template a)
 pInside parser = do
   oldInside <- insideDirective <$> P.getState
   P.updateState $ \st -> st{ insideDirective = True }
@@ -167,8 +167,8 @@ pInside parser = do
   P.updateState $ \st -> st{ insideDirective = oldInside }
   return res
 
-pConditional :: TemplateMonad m
-             => Parser m Template
+pConditional :: (IsString a, Monoid a, TemplateMonad m)
+             => Parser m (Template a)
 pConditional = do
   v <- pEnclosed $ P.try $ P.string "if" *> pParens pVar
   pInside $ do
@@ -180,13 +180,14 @@ pConditional = do
     when multiline $ P.option () skipEndline
     return $ Conditional v ifContents elseContents
 
-pElse :: TemplateMonad m => Bool -> Parser m Template
+pElse :: (IsString a, Monoid a, TemplateMonad m)
+      => Bool -> Parser m (Template a)
 pElse multiline = do
   pEnclosed (P.string "else")
   when multiline $ P.option () skipEndline
   pTemplate
 
-pElseIf :: TemplateMonad m => Parser m Template
+pElseIf :: (IsString a, Monoid a, TemplateMonad m) => Parser m (Template a)
 pElseIf = do
   v <- pEnclosed $ P.try $ P.string "elseif" *> pParens pVar
   multiline <- P.option False (True <$ skipEndline)
@@ -202,13 +203,13 @@ skipEndline = do
            P.getPosition
   P.updateState $ \st -> st{ firstNonspace = pos }
 
-pReflowToggle :: TemplateMonad m => Parser m Template
+pReflowToggle :: (Monoid a, TemplateMonad m) => Parser m (Template a)
 pReflowToggle = do
   pEnclosed $ P.char '~'
   P.modifyState $ \st -> st{ breakingSpaces = not (breakingSpaces st) }
   return mempty
 
-pNested :: TemplateMonad m => Parser m Template
+pNested :: (IsString a, Monoid a, TemplateMonad m) => Parser m (Template a)
 pNested = do
   col <- P.sourceColumn <$> P.getPosition
   pEnclosed $ P.char '^'
@@ -223,7 +224,7 @@ pNested = do
   P.updateState $ \st -> st{ nestedCol = oldNested }
   return $ Nested $ contents
 
-pForLoop :: TemplateMonad m => Parser m Template
+pForLoop :: (IsString a, Monoid a, TemplateMonad m) => Parser m (Template a)
 pForLoop = do
   v <- pEnclosed $ P.try $ P.string "for" *> pParens pVar
   -- if newline after the "for", then a newline after "endfor" will be swallowed
@@ -238,7 +239,7 @@ pForLoop = do
     when multiline $ P.option () skipEndline
     return $ Iterate v contents sep
 
-changeToIt :: Variable -> Template -> Template
+changeToIt :: (Semigroup a) => Variable -> Template a -> Template a
 changeToIt v = go
  where
   go (Interpolate w) = Interpolate (reletter v w)
@@ -255,8 +256,8 @@ changeToIt v = go
        then Variable ("it" : drop (length vs) ws) gs
        else Variable ws gs
 
-pInterpolate :: TemplateMonad m
-             => Parser m Template
+pInterpolate :: (IsString a, Monoid a, TemplateMonad m)
+             => Parser m (Template a)
 pInterpolate = do
   pos <- P.getPosition
   -- we don't used pEnclosed here, to get better error messages:
@@ -280,7 +281,7 @@ pNewlineOrEof :: Monad m => Parser m ()
 pNewlineOrEof = () <$ pLineEnding <|> P.eof
 
 handleNesting :: TemplateMonad m
-              => Bool -> P.SourcePos -> Template -> Parser m Template
+              => Bool -> P.SourcePos -> Template a -> Parser m (Template a)
 handleNesting eatEndline pos templ = do
   firstNonspacePos <- firstNonspace <$> P.getState
   let beginline = firstNonspacePos == pos
@@ -296,8 +297,8 @@ handleNesting eatEndline pos templ = do
               then toNested templ
               else templ
 
-pBarePartial :: TemplateMonad m
-             => Parser m Template
+pBarePartial :: (IsString a, Monoid a, TemplateMonad m)
+             => Parser m (Template a)
 pBarePartial = do
   pos <- P.getPosition
   (closer, fp) <- P.try $ do
@@ -317,8 +318,8 @@ pPartialName = P.try $ do
   P.string "()"
   return fp
 
-pPartial :: TemplateMonad m
-         => Maybe Variable -> FilePath -> Parser m Template
+pPartial :: (IsString a, Monoid a, TemplateMonad m)
+         => Maybe Variable -> FilePath -> Parser m (Template a)
 pPartial mbvar fp = do
   oldst <- P.getState
   separ <- P.option mempty pSep
@@ -347,7 +348,7 @@ pPartial mbvar fp = do
     Just var -> return $ Iterate var t separ
     Nothing  -> return $ Partial t
 
-pSep :: Monad m => Parser m Template
+pSep :: (IsString a, Monad m) => Parser m (Template a)
 pSep = do
     P.char '['
     xs <- P.many (P.satisfy (/= ']'))

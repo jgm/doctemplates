@@ -63,24 +63,25 @@ import Data.Semigroup
 -- import Debug.Trace
 
 -- | A template.
-data Template =
+data Template a =
        Interpolate Variable
-     | Conditional Variable Template Template
-     | Iterate Variable Template Template
-     | Nested Template
-     | Partial Template
-     | Literal Text
-     | Concat Template Template
+     | Conditional Variable (Template a) (Template a)
+     | Iterate Variable (Template a) (Template a)
+     | Nested (Template a)
+     | Partial (Template a)
+     | Literal a
+     | Concat (Template a) (Template a)
      | BreakingSpace
      | Empty
-     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
+     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord,
+               Foldable, Traversable, Functor)
 
-instance Semigroup Template where
+instance Semigroup a => Semigroup (Template a) where
   x <> Empty = x
   Empty <> x = x
   x <> y = Concat x y
 
-instance Monoid Template where
+instance Monoid a => Monoid (Template a) where
   mappend = (<>)
   mempty = Empty
 
@@ -423,7 +424,7 @@ type RenderState = S.State Int
 -- | Render a compiled template in a "context" which provides
 -- values for the template's variables.
 renderTemplate :: (TemplateTarget a, ToContext a b)
-               => Template -> b -> a
+               => Template a -> b -> a
 renderTemplate t x = S.evalState (renderTemp t (toContext x)) 0
 
 updateColumn :: TemplateTarget a => a -> RenderState a
@@ -436,8 +437,8 @@ updateColumn x = do
   return x
 
 renderTemp :: forall a . TemplateTarget a
-           => Template -> Context a -> RenderState a
-renderTemp (Literal t) _ = updateColumn $ fromText t
+           => Template a -> Context a -> RenderState a
+renderTemp (Literal t) _ = updateColumn $ t
 renderTemp BreakingSpace _ = updateColumn breakingSpace
 renderTemp (Interpolate v) ctx = updateColumn $ mconcat $ resolveVariable v ctx
 renderTemp (Conditional v ift elset) ctx =

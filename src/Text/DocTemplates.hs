@@ -300,6 +300,7 @@ module Text.DocTemplates ( renderTemplate
                          ) where
 
 import qualified Data.Text.IO as TIO
+import Data.String
 import Data.Text (Text)
 import Text.DocTemplates.Parser (compileTemplate)
 import Text.DocTemplates.Internal ( TemplateMonad(..), Context(..),
@@ -309,7 +310,8 @@ import Text.DocTemplates.Internal ( TemplateMonad(..), Context(..),
 -- | Compile a template from a file.  IO errors will be
 -- raised as exceptions; template parsing errors result in
 -- Left return values.
-compileTemplateFile :: FilePath -> IO (Either String Template)
+compileTemplateFile :: (IsString a, Monoid a)
+                    => FilePath -> IO (Either String (Template a))
 compileTemplateFile templPath = do
   templateText <- TIO.readFile templPath
   compileTemplate templPath templateText
@@ -319,7 +321,8 @@ compileTemplateFile templPath = do
 -- and 'renderTemplate'.  If a template will be rendered
 -- more than once in the same process, compile it separately
 -- for better performance.
-applyTemplate :: (TemplateMonad m, TemplateTarget a, ToContext a b)
+applyTemplate :: (TemplateMonad m, TemplateTarget a, IsString a,
+                  Monoid a, ToContext a b)
            => FilePath -> Text -> b -> m (Either String a)
 applyTemplate fp t val = do
     res <- compileTemplate fp t
