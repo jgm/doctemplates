@@ -67,7 +67,7 @@ data Template =
        Interpolate Variable
      | Conditional Variable Template Template
      | Iterate Variable Template Template
-     | Nested Template
+     | Nested (Maybe Int) Template
      | Partial Template
      | Literal Text
      | Concat Template Template
@@ -449,8 +449,8 @@ renderTemp (Iterate v t sep) ctx = do
   xs <- withVariable v ctx (renderTemp t)
   sep' <- renderTemp sep ctx
   return . mconcat . intersperse sep' $ xs
-renderTemp (Nested t) ctx = do
-  n <- S.get
+renderTemp (Nested mbindent t) ctx = do
+  n <- maybe S.get return mbindent
   indent n <$> renderTemp t ctx
 renderTemp (Partial t) ctx = renderTemp t ctx
 renderTemp (Concat t1 t2) ctx =

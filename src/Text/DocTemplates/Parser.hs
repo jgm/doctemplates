@@ -14,7 +14,8 @@
 module Text.DocTemplates.Parser
     ( compileTemplate ) where
 
-import Data.Char (isAlphaNum)
+import Data.Text.Read (decimal)
+import Data.Char (isAlphaNum, isAscii, isDigit)
 import Control.Monad (guard, when)
 import Control.Monad.Trans (lift)
 import qualified Text.Parsec as P
@@ -211,7 +212,15 @@ pReflowToggle = do
 pNested :: TemplateMonad m => Parser m Template
 pNested = do
   col <- P.sourceColumn <$> P.getPosition
-  pEnclosed $ P.char '^'
+  ds <- pEnclosed $ do
+          P.char '^'
+          P.many $ P.satisfy (\c -> isAscii c && isDigit c)
+  mbindent <- if null ds
+                 then return Nothing
+                 else case decimal (fromString ds) of
+                        Right (y,"") -> return $ Just y
+                        _            -> fail $ "Could not parse " ++ ds ++
+                                               " as number"
   oldNested <- nestedCol <$> P.getState
   P.updateState $ \st -> st{ nestedCol = Just col }
   x <- pTemplate
@@ -221,7 +230,7 @@ pNested = do
           return (y <> z)
   let contents = x <> mconcat xs
   P.updateState $ \st -> st{ nestedCol = oldNested }
-  return $ Nested $ contents
+  return $ Nested mbindent $ contents
 
 pForLoop :: TemplateMonad m => Parser m Template
 pForLoop = do
@@ -248,7 +257,7 @@ changeToIt v = go
         (changeToIt v t1) (changeToIt v t2)
   go (Concat t1 t2) = changeToIt v t1 <> changeToIt v t2
   go (Partial t) = Partial t  -- don't reletter inside partial
-  go (Nested t) = Nested (go t)
+  go (Nested mbindent t) = Nested mbindent (go t)
   go x = x
   reletter (Variable vs _fs) (Variable ws gs) =
     if vs `isPrefixOf` ws
@@ -287,11 +296,11 @@ handleNesting eatEndline pos templ = do
   endofline <- (True <$ P.lookAhead pNewlineOrEof) <|> pure False
   when (eatEndline && beginline) $ P.optional skipEndline
   mbNested <- nestedCol <$> P.getState
-  let toNested t@(Nested{}) = t
+  let toNested t@(Nested _ _) = t
       toNested t = case P.sourceColumn pos of
                      1 -> t
                      n | Just n == mbNested -> t
-                       | otherwise          -> Nested t
+                       | otherwise          -> Nested Nothing t
   return $ if beginline && endofline
               then toNested templ
               else templ

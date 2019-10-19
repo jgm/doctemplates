@@ -7,7 +7,9 @@
     $sup$
    $sup$
 
-   $^$$sup$
+  $^$$sup$
+
+ $^10$$sup$
 
 $bim.zub$ $^$$sup$
 
@@ -38,8 +40,11 @@ $endfor$
    a multiline
    string
 
-   a multiline
-   string
+  a multiline
+  string
+
+ a multiline
+          string
 
 sim a multiline
     string
