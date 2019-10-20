@@ -291,26 +291,27 @@ module Text.DocTemplates ( renderTemplate
                          , compileTemplateFile
                          , applyTemplate
                          , TemplateMonad(..)
-                         , TemplateTarget(..)
+                         , TemplateTarget
                          , Context(..)
                          , Val(..)
                          , ToContext(..)
                          , FromContext(..)
                          , Template  -- export opaque type
+                         , Doc(..)
                          ) where
 
 import qualified Data.Text.IO as TIO
-import Data.String
+import Text.DocLayout (Doc(..))
 import Data.Text (Text)
 import Text.DocTemplates.Parser (compileTemplate)
 import Text.DocTemplates.Internal ( TemplateMonad(..), Context(..),
-            Val(..), ToContext(..), FromContext(..), TemplateTarget(..),
+            Val(..), ToContext(..), FromContext(..), TemplateTarget,
             Template, renderTemplate )
 
 -- | Compile a template from a file.  IO errors will be
 -- raised as exceptions; template parsing errors result in
 -- Left return values.
-compileTemplateFile :: (IsString a, Monoid a)
+compileTemplateFile :: TemplateTarget a
                     => FilePath -> IO (Either String (Template a))
 compileTemplateFile templPath = do
   templateText <- TIO.readFile templPath
@@ -321,9 +322,8 @@ compileTemplateFile templPath = do
 -- and 'renderTemplate'.  If a template will be rendered
 -- more than once in the same process, compile it separately
 -- for better performance.
-applyTemplate :: (TemplateMonad m, TemplateTarget a, IsString a,
-                  Monoid a, ToContext a b)
-           => FilePath -> Text -> b -> m (Either String a)
+applyTemplate :: (TemplateMonad m, TemplateTarget a, ToContext a b)
+           => FilePath -> Text -> b -> m (Either String (Doc a))
 applyTemplate fp t val = do
     res <- compileTemplate fp t
     case res of
