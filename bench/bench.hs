@@ -8,17 +8,19 @@ import Criterion.Types (Config (..))
 import Control.Monad.Identity
 import Data.Semigroup ((<>))
 import Data.Aeson (object, (.=), Value)
+import Text.DocLayout (render)
 
 main :: IO ()
 main = do
   Right bigtextTemplate <- compileTemplate "bigtext.txt" bigtext
   defaultMainWith defaultConfig{ timeLimit = 5.0 } $
    [ bench "applyTemplate" $
-      nf (runIdentity . applyTemplate "bigtext" bigtext
+      nf (fmap (render Nothing)
+          . runIdentity . applyTemplate "bigtext" bigtext
           :: Value -> Either String Text)
         val
    , bench "renderTemplate" $
-      nf (renderTemplate bigtextTemplate :: Value -> Text)
+      nf (render Nothing . renderTemplate bigtextTemplate :: Value -> Text)
         val
    ]
 

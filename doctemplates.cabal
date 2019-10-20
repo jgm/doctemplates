@@ -72,6 +72,7 @@ benchmark doctemplates-bench
   Main-Is:         bench.hs
   Hs-Source-Dirs:  bench
   Build-Depends:   doctemplates,
+                   doclayout,
                    base >= 4.8 && < 5,
                    criterion >= 1.0 && < 1.6,
                    filepath,
