@@ -145,13 +145,16 @@ instance ToContext a (Val a) where
 instance TemplateTarget a => ToContext a a where
   toVal     = SimpleVal . DL.literal
 
+instance ToContext a a => ToContext a (Doc a) where
+  toVal    = SimpleVal
+
 -- This is needed because otherwise the compiler tries to
 -- match on ToContext a [b], with a = b = Char, even though
 -- we don't have ToContext Char Char.  I don't understand why.
 instance {-# OVERLAPS #-} ToContext String String where
   toVal    = SimpleVal . DL.literal
 
-instance ToContext a a => ToContext a (Doc a) where
+instance {-# OVERLAPS #-} ToContext String (Doc String) where
   toVal    = SimpleVal
 
 instance ToContext a b => ToContext a [b] where
