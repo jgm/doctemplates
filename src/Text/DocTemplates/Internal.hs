@@ -151,6 +151,9 @@ instance TemplateTarget a => ToContext a a where
 instance {-# OVERLAPS #-} ToContext String String where
   toVal    = SimpleVal . DL.literal
 
+instance ToContext a a => ToContext a (Doc a) where
+  toVal    = SimpleVal
+
 instance ToContext a b => ToContext a [b] where
   toVal     = ListVal . map toVal
 
