@@ -1,9 +1,8 @@
 resolver: lts-13.17
 packages:
 - '.'
-- '../doclayout'
 extra-deps:
-  #- doclayout-0.1
+- doclayout-0.2
 - HsYAML-0.2.0.0
 flags: {}
 extra-package-dbs: []
