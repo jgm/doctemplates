@@ -1,0 +1,7 @@
+{ "sup": "a multiline\nstring"
+}
+.
+$sup/right 15$$sup/center 15$$sup/left 15$
+.
+    a multiline  a multiline  a multiline
+         string    string     string
