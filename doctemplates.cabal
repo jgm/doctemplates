@@ -35,7 +35,7 @@ library
                        aeson,
                        HsYAML,
                        text,
-                       doclayout >= 0.1 && < 0.2,
+                       doclayout >= 0.2 && < 0.3,
                        containers,
                        vector,
                        filepath,
@@ -54,7 +54,7 @@ test-suite doctemplates-test
   main-is:             test.hs
   build-depends:       base,
                        doctemplates,
-                       doclayout >= 0.1 && < 0.2,
+                       doclayout >= 0.2 && < 0.3,
                        aeson,
                        Glob,
                        tasty,
@@ -72,7 +72,7 @@ benchmark doctemplates-bench
   Main-Is:         bench.hs
   Hs-Source-Dirs:  bench
   Build-Depends:   doctemplates,
-                   doclayout,
+                   doclayout >= 0.2 && < 0.3,
                    base >= 4.8 && < 5,
                    criterion >= 1.0 && < 1.6,
                    filepath,

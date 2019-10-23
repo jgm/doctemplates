@@ -93,6 +93,9 @@ data Filter =
     | ToLength
     | Reverse
     | ToAlpha
+    | LeftBlock Int
+    | CenterBlock Int
+    | RightBlock Int
     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
 -- | A variable which may have several parts (@foo.bar.baz@).
@@ -308,6 +311,18 @@ applyFilter ToAlpha val =
         Right (y,"") -> SimpleVal $ fromString
                          [chr (ord 'a' + (y `mod` 26) - 1)]
         _            -> val
+    _           -> val
+applyFilter (LeftBlock n) val =
+  case val of
+    SimpleVal d -> SimpleVal (DL.lblock n d)
+    _           -> val
+applyFilter (RightBlock n) val =
+  case val of
+    SimpleVal d -> SimpleVal (DL.rblock n d)
+    _           -> val
+applyFilter (CenterBlock n) val =
+  case val of
+    SimpleVal d -> SimpleVal (DL.cblock n d)
     _           -> val
 
 multiLookup :: (IsString a, TemplateTarget a)

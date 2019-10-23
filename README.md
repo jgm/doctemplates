@@ -367,6 +367,12 @@ $it.key/alpha/uppercase$. $it.name$
 $endfor$
 ```
 
+Some filters take a parameter:
+
+```
+$name.first/right 20$ $name.last/left 30/uppercase$
+```
+
 Currently the following filters are predefined:
 
 - `pairs`:  Converts a map or array to an array of maps,
@@ -393,4 +399,18 @@ Currently the following filters are predefined:
   other values.  This can be used to get lettered
   enumeration from array indices.  To get uppercase
   letters, chain with `uppercase`.
+
+- `left n`:  Renders a textual value in a block of
+  width `n`, aligned to the left, and has no effect
+  on other values. This can be used to align material
+  in tables, or to create list markers that occupy
+  uniform space regardless of the number of digits.
+
+- `right n`:  Renders a textual value in a block of
+  width `n`, aligned to the right, and has no effect
+  on other values.
+
+- `center n`:  Renders a textual value in a block of
+  width `n`, aligned to the center, and has no effect
+  on other values.
 

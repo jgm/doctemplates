@@ -23,6 +23,7 @@ import Control.Applicative
 import Data.String (IsString(..))
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.Read as T
 import Data.List (isPrefixOf)
 import System.FilePath
 import Text.DocTemplates.Internal
@@ -400,16 +401,26 @@ pVar = do
 pFilter :: Monad m => Parser m Filter
 pFilter = do
   P.char '/'
-  P.choice $
-    map (\(filterName, filt) ->
-           filt <$ P.try (P.string filterName))
-      [ ("uppercase", ToUppercase)
-      , ("lowercase", ToLowercase)
-      , ("pairs", ToPairs)
-      , ("length", ToLength)
-      , ("alpha", ToAlpha)
-      , ("reverse", Reverse)
-      ]
+  filterName <- P.many1 P.letter
+  case filterName of
+    "uppercase" -> return ToUppercase
+    "lowercase" -> return ToLowercase
+    "pairs"     -> return ToPairs
+    "length"    -> return ToLength
+    "alpha"     -> return ToAlpha
+    "reverse"   -> return Reverse
+    "left"      -> withIntParam LeftBlock
+    "right"     -> withIntParam RightBlock
+    "center"    -> withIntParam CenterBlock
+    _           -> fail $ "Unknown filter " ++ filterName
+
+withIntParam :: Monad m => (Int -> a) -> Parser m a
+withIntParam constructor = do
+  P.many1 P.space
+  ds <- P.many1 P.digit
+  case T.decimal (T.pack ds) of
+        Right (n,"") -> return $ constructor n
+        _            -> fail "Expected integer parameter for filter"
 
 pIt :: Monad m => Parser m Text
 pIt = fromString <$> P.try (P.string "it")
