@@ -72,7 +72,6 @@ data Template a =
      | Partial (Template a)
      | Literal (Doc a)
      | Concat (Template a) (Template a)
-     | BreakingSpace
      | Empty
      deriving (Show, Read, Data, Typeable, Generic, Eq, Ord,
                Foldable, Traversable, Functor)
@@ -381,7 +380,6 @@ updateColumn x = do
 renderTemp :: forall a . (IsString a, TemplateTarget a)
            => Template a -> Context a -> RenderState (Doc a)
 renderTemp (Literal t) _ = updateColumn $ t
-renderTemp BreakingSpace _ = updateColumn $ DL.BreakingSpace
 renderTemp (Interpolate v) ctx = updateColumn $ mconcat $ resolveVariable v ctx
 renderTemp (Conditional v ift elset) ctx =
   let res = resolveVariable v ctx

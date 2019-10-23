@@ -27,6 +27,7 @@ import qualified Data.Text.Read as T
 import Data.List (isPrefixOf)
 import System.FilePath
 import Text.DocTemplates.Internal
+import qualified Text.DocLayout as DL
 #if MIN_VERSION_base(4,11,0)
 #else
 import Data.Semigroup ((<>))
@@ -95,10 +96,10 @@ pNewline = P.try $ do
   breakspaces <- breakingSpaces <$> P.getState
   pos <- P.getPosition
   P.updateState $ \st -> st{ firstNonspace = pos }
-  return $
-   if breakspaces
-      then BreakingSpace
-      else Literal $ fromString $ nls <> sps
+  return $ Literal $
+    if breakspaces
+       then DL.BreakingSpace
+       else fromString $ nls <> sps
 
 pLit :: (TemplateTarget a, Monad m) => Parser m (Template a)
 pLit = do
@@ -117,7 +118,8 @@ toBreakable [] = Empty
 toBreakable xs =
   case break isSpacy xs of
     ([], []) -> Empty
-    ([], zs) -> BreakingSpace <> toBreakable (dropWhile isSpacy zs)
+    ([], zs) -> Literal DL.BreakingSpace <>
+                   toBreakable (dropWhile isSpacy zs)
     (ys, []) -> Literal (fromString ys)
     (ys, zs) -> Literal (fromString ys) <> toBreakable zs
 
