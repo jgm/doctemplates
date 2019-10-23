@@ -402,6 +402,7 @@ pFilter :: Monad m => Parser m Filter
 pFilter = do
   P.char '/'
   filterName <- P.many1 P.letter
+  P.notFollowedBy P.letter
   case filterName of
     "uppercase" -> return ToUppercase
     "lowercase" -> return ToLowercase
@@ -415,12 +416,13 @@ pFilter = do
     _           -> fail $ "Unknown filter " ++ filterName
 
 withIntParam :: Monad m => (Int -> a) -> Parser m a
-withIntParam constructor = do
-  P.many1 P.space
+withIntParam constructor = P.try (do
+  _ <- P.many1 P.space
   ds <- P.many1 P.digit
   case T.decimal (T.pack ds) of
         Right (n,"") -> return $ constructor n
-        _            -> fail "Expected integer parameter for filter"
+        _            -> fail "Expected integer parameter for filter") P.<?>
+          "integer parameter for filter"
 
 pIt :: Monad m => Parser m Text
 pIt = fromString <$> P.try (P.string "it")
