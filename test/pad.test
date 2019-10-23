@@ -1,7 +1,18 @@
-{ "sup": "a multiline\nstring"
+{ "sup": "a multiline\nstring",
+  "baz": ["a\nb", "b\nc\nd"]
 }
 .
 $sup/right 15$$sup/center 15$$sup/left 15$
+
+$for(baz/pairs)$
+$it.key/alpha/right 4$. $^$$it.value$
+$endfor$
 .
     a multiline  a multiline  a multiline
          string    string     string
+
+   a. a
+      b
+   b. b
+      c
+      d
