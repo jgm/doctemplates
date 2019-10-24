@@ -331,12 +331,16 @@ applyFilter (Block align n border) val =
       toBorder y = if T.null y
                       then mempty
                       else DL.vfill (fromText y)
-  in case val of
+  in case nullToSimple val of
        SimpleVal d -> SimpleVal $
                         toBorder (borderLeft border) <>
                         constructor n d <>
                         toBorder (borderRight border)
        _           -> val
+
+nullToSimple :: Monoid a => Val a -> Val a
+nullToSimple NullVal = SimpleVal mempty
+nullToSimple x = x
 
 multiLookup :: (IsString a, TemplateTarget a)
             => [Filter] -> [Text] -> Val a -> Val a

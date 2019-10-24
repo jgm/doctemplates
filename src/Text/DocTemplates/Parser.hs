@@ -431,7 +431,7 @@ pBlockBorders = do
   P.skipMany P.space
   let pBorder = do
         P.char '"'
-        cs <- P.many (P.satisfy (/='"') <|> (P.char '\\' >> P.anyChar))
+        cs <- P.many $ (P.noneOf ['"','\\']) <|> (P.char '\\' >> P.anyChar)
         P.char '"'
         P.skipMany P.space
         return $ T.pack cs

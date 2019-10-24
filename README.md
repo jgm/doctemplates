@@ -367,10 +367,14 @@ $it.key/alpha/uppercase$. $it.name$
 $endfor$
 ```
 
-Some filters take a parameter:
+Some filters take parameters:
 
 ```
-$name.first/right 20$ $name.last/left 30/uppercase$
+|----------------------|------------|
+$for(employee)$
+$it.name.first/uppercase/left 20 "| "$$it.name.salary/right 10 " | " " |"$
+$endfor$
+|----------------------|------------|
 ```
 
 Currently the following filters are predefined:
@@ -403,7 +407,10 @@ Currently the following filters are predefined:
 - `left n "leftborder" "rightborder"`:  Renders a textual value
   in a block of width `n`, aligned to the left, with an optional
   left and right border.  Has no effect on other values. This
-  can be used to align material in tables.
+  can be used to align material in tables.  Widths are positive
+  integers indicating the number of characters.  Borders
+  are strings inside double quotes; literal `"` and `\` characters
+  must be backslash-escaped.
 
 - `right n "leftborder" "rightborder"`:  Renders a textual value
   in a block of width `n`, aligned to the right, and has no
