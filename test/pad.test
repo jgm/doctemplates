@@ -13,6 +13,8 @@ $for(baz/pairs)$
 $it.key/right 4 "| " " | "$$it.value/left 10 "" "|"$
 +------+-----------+
 $endfor$
+
+$sup/uppercase/center 15 "|"$
 .
     a multiline  a multiline  a multiline
          string    string     string
@@ -31,3 +33,6 @@ $endfor$
 |      | c         |
 |      | d         |
 +------+-----------+
+
+|  A MULTILINE
+|    STRING
