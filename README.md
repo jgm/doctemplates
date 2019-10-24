@@ -400,17 +400,16 @@ Currently the following filters are predefined:
   enumeration from array indices.  To get uppercase
   letters, chain with `uppercase`.
 
-- `left n`:  Renders a textual value in a block of
-  width `n`, aligned to the left, and has no effect
-  on other values. This can be used to align material
-  in tables, or to create list markers that occupy
-  uniform space regardless of the number of digits.
+- `left n "leftborder" "rightborder"`:  Renders a textual value
+  in a block of width `n`, aligned to the left, with an optional
+  left and right border.  Has no effect on other values. This
+  can be used to align material in tables.
 
-- `right n`:  Renders a textual value in a block of
-  width `n`, aligned to the right, and has no effect
-  on other values.
+- `right n "leftborder" "rightborder"`:  Renders a textual value
+  in a block of width `n`, aligned to the right, and has no
+  effect on other values.
 
-- `center n`:  Renders a textual value in a block of
-  width `n`, aligned to the center, and has no effect
-  on other values.
+- `center n "leftborder" "rightborder"`:  Renders a textual
+  value in a block of width `n`, aligned to the center, and has
+  no effect on other values.
 

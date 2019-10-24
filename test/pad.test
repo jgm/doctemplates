@@ -7,6 +7,12 @@ $sup/right 15$$sup/center 15$$sup/left 15$
 $for(baz/pairs)$
 $it.key/alpha/right 4$. $^$$it.value$
 $endfor$
+
++------+-----------+
+$for(baz/pairs)$
+$it.key/right 4 "| " " | "$$it.value/left 10 "" "|"$
++------+-----------+
+$endfor$
 .
     a multiline  a multiline  a multiline
          string    string     string
@@ -16,3 +22,12 @@ $endfor$
    b. b
       c
       d
+
++------+-----------+
+|    1 | a         |
+|      | b         |
++------+-----------+
+|    2 | b         |
+|      | c         |
+|      | d         |
++------+-----------+

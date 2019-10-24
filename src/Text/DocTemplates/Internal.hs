@@ -34,6 +34,8 @@ module Text.DocTemplates.Internal
       , Template(..)
       , Variable(..)
       , Filter(..)
+      , Alignment(..)
+      , Border(..)
       ) where
 
 import Data.Text.Conversions (FromText(..), ToText(..))
@@ -92,9 +94,19 @@ data Filter =
     | ToLength
     | Reverse
     | ToAlpha
-    | LeftBlock Int
-    | CenterBlock Int
-    | RightBlock Int
+    | Block Alignment Int Border
+    deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
+
+data Alignment =
+      LeftAligned
+    | Centered
+    | RightAligned
+    deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
+
+data Border = Border
+     { borderLeft  :: Text
+     , borderRight :: Text
+     }
     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
 -- | A variable which may have several parts (@foo.bar.baz@).
@@ -311,18 +323,20 @@ applyFilter ToAlpha val =
                          [chr (ord 'a' + (y `mod` 26) - 1)]
         _            -> val
     _           -> val
-applyFilter (LeftBlock n) val =
-  case val of
-    SimpleVal d -> SimpleVal (DL.lblock n d)
-    _           -> val
-applyFilter (RightBlock n) val =
-  case val of
-    SimpleVal d -> SimpleVal (DL.rblock n d)
-    _           -> val
-applyFilter (CenterBlock n) val =
-  case val of
-    SimpleVal d -> SimpleVal (DL.cblock n d)
-    _           -> val
+applyFilter (Block align n border) val =
+  let constructor = case align of
+                      LeftAligned  -> DL.lblock
+                      Centered     -> DL.cblock
+                      RightAligned -> DL.rblock
+      toBorder y = if T.null y
+                      then mempty
+                      else DL.vfill (fromText y)
+  in case val of
+       SimpleVal d -> SimpleVal $
+                        toBorder (borderLeft border) <>
+                        constructor n d <>
+                        toBorder (borderRight border)
+       _           -> val
 
 multiLookup :: (IsString a, TemplateTarget a)
             => [Filter] -> [Text] -> Val a -> Val a

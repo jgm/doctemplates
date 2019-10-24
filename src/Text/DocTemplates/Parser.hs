@@ -412,19 +412,30 @@ pFilter = do
     "length"    -> return ToLength
     "alpha"     -> return ToAlpha
     "reverse"   -> return Reverse
-    "left"      -> withIntParam LeftBlock
-    "right"     -> withIntParam RightBlock
-    "center"    -> withIntParam CenterBlock
+    "left"      -> Block LeftAligned <$> pBlockWidth <*> pBlockBorders
+    "right"     -> Block RightAligned <$> pBlockWidth <*> pBlockBorders
+    "center"    -> Block Centered <$> pBlockWidth <*> pBlockBorders
     _           -> fail $ "Unknown filter " ++ filterName
 
-withIntParam :: Monad m => (Int -> a) -> Parser m a
-withIntParam constructor = P.try (do
+pBlockWidth :: Monad m => Parser m Int
+pBlockWidth = P.try (do
   _ <- P.many1 P.space
   ds <- P.many1 P.digit
   case T.decimal (T.pack ds) of
-        Right (n,"") -> return $ constructor n
+        Right (n,"") -> return n
         _            -> fail "Expected integer parameter for filter") P.<?>
           "integer parameter for filter"
+
+pBlockBorders :: Monad m => Parser m Border
+pBlockBorders = do
+  P.skipMany P.space
+  let pBorder = do
+        P.char '"'
+        cs <- P.many (P.satisfy (/='"') <|> (P.char '\\' >> P.anyChar))
+        P.char '"'
+        P.skipMany P.space
+        return $ T.pack cs
+  Border <$> P.option mempty pBorder <*> P.option mempty pBorder
 
 pIt :: Monad m => Parser m Text
 pIt = fromString <$> P.try (P.string "it")
