@@ -1,5 +1,12 @@
 { "sup": "a multiline\nstring",
-  "baz": ["a\nb", "b\nc\nd"]
+  "baz": ["a\nb", "b\nc\nd"],
+  "employee":
+  [ { "name": { "first": "John", "last": "Doe" } }
+  , { "name": { "first": "Omar", "last": "Smith" }
+    , "salary": "30000" }
+  , { "name": { "first": "Sara", "last": "Chen" }
+    , "salary": "60000" }
+  ]
 }
 .
 $sup/right 15$$sup/center 15$$sup/left 15$
@@ -14,7 +21,12 @@ $it.key/right 4 "| " " | "$$it.value/left 10 "" "|"$
 +------+-----------+
 $endfor$
 
-$sup/uppercase/center 15 "|"$
+|------------|------------|
+$for(employee)$
+$it.name.first/uppercase/left 10 "| "$$it.salary/right 10 " | " " |"$
+$endfor$
+|------------|------------|
+
 .
     a multiline  a multiline  a multiline
          string    string     string
@@ -34,5 +46,8 @@ $sup/uppercase/center 15 "|"$
 |      | d         |
 +------+-----------+
 
-|  A MULTILINE
-|    STRING
+|------------|------------|
+| JOHN       |            |
+| OMAR       |      30000 |
+| SARA       |      60000 |
+|------------|------------|
