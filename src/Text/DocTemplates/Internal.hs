@@ -63,7 +63,6 @@ import Data.List (intersperse)
 #else
 import Data.Semigroup
 #endif
--- import Debug.Trace
 
 -- | A template.
 data Template a =
@@ -342,23 +341,23 @@ nullToSimple :: Monoid a => Val a -> Val a
 nullToSimple NullVal = SimpleVal mempty
 nullToSimple x = x
 
-multiLookup :: (IsString a, TemplateTarget a)
-            => [Filter] -> [Text] -> Val a -> Val a
-multiLookup fs [] x = foldr applyFilter x $ reverse fs
-multiLookup fs (t:vs) (MapVal (Context o)) =
+applyFilters :: TemplateTarget a => [Filter] -> Val a -> Val a
+applyFilters fs x = foldr applyFilter x $ reverse fs
+
+multiLookup :: TemplateTarget a => [Text] -> Val a -> Val a
+multiLookup [] x = x
+multiLookup (t:vs) (MapVal (Context o)) =
   case M.lookup t o of
     Nothing -> NullVal
-    Just v' -> multiLookup fs vs v'
-multiLookup _ _ _ = NullVal
+    Just v' -> multiLookup vs v'
+multiLookup _ _ = NullVal
 
-resolveVariable :: (IsString a, TemplateTarget a)
-                => Variable -> Context a -> [Doc a]
+resolveVariable :: TemplateTarget a => Variable -> Context a -> [Doc a]
 resolveVariable v ctx = resolveVariable' v (MapVal ctx)
 
-resolveVariable' :: (IsString a, TemplateTarget a)
-                 => Variable -> Val a -> [Doc a]
+resolveVariable' :: TemplateTarget a => Variable -> Val a -> [Doc a]
 resolveVariable' v val =
-  case multiLookup (varFilters v) (varParts v) val of
+  case applyFilters (varFilters v) $ multiLookup (varParts v) val of
     ListVal xs    -> concatMap (resolveVariable' mempty) xs
     SimpleVal d
       | DL.isEmpty d -> []
@@ -372,11 +371,11 @@ removeFinalNl DL.CarriageReturn = mempty
 removeFinalNl (DL.Concat d1 d2) = d1 <> removeFinalNl d2
 removeFinalNl x                 = x
 
-withVariable :: (Monad m, IsString a, TemplateTarget a)
+withVariable :: (Monad m, TemplateTarget a)
              => Variable -> Context a -> (Context a -> m (Doc a))
              -> m [Doc a]
 withVariable  v ctx f =
-  case multiLookup (varFilters v) (varParts v) (MapVal ctx) of
+  case applyFilters (varFilters v) $ multiLookup (varParts v) (MapVal ctx) of
     NullVal     -> return mempty
     ListVal xs  -> mapM (\iterval -> f $
                     Context $ M.insert "it" iterval $ unContext ctx) xs
@@ -386,7 +385,7 @@ type RenderState = S.State Int
 
 -- | Render a compiled template in a "context" which provides
 -- values for the template's variables.
-renderTemplate :: (TemplateTarget a, IsString a, HasChars a, ToContext a b)
+renderTemplate :: (TemplateTarget a, ToContext a b)
                => Template a -> b -> Doc a
 renderTemplate t x = S.evalState (renderTemp t (toContext x)) 0
 
@@ -395,7 +394,7 @@ updateColumn x = do
   S.modify $ DL.updateColumn x
   return x
 
-renderTemp :: forall a . (IsString a, TemplateTarget a)
+renderTemp :: forall a . TemplateTarget a
            => Template a -> Context a -> RenderState (Doc a)
 renderTemp (Literal t) _ = updateColumn $ t
 renderTemp (Interpolate v) ctx = updateColumn $ mconcat $ resolveVariable v ctx
