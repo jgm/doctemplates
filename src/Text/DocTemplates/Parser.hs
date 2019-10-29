@@ -30,7 +30,7 @@ import Text.DocTemplates.Internal
 import qualified Text.DocLayout as DL
 #if MIN_VERSION_base(4,11,0)
 #else
-import Data.Semigroup ((<>))
+import Data.Semigroup ((<>), Semigroup)
 #endif
 
 -- | Compile a template.  The FilePath parameter is used
