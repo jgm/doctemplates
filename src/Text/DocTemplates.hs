@@ -8,15 +8,15 @@
    Portability : portable
 
 This is the text templating system used by pandoc. Its basic function is
-to fill holes in a template in a 'Context' that provides values for
+to fill holes in a template in a “Context” that provides values for
 variables. Control structures are provided to test that a variable has a
 non-blank value and to iterate over the items of a list. Partials—that
 is, subtemplates defined in different files—are also supported.
 
-Templates may be rendered to lazy or strict 'Text', 'String', or a
-doclayout 'Doc'. (Using a 'Doc' allows rendered documents to wrap
-flexibly on breaking spaces.) A 'Context' can be constructed manually or
-an aeson 'Value' may be used.
+Templates may be rendered to lazy or strict @Text@, @String@, or a
+doclayout @Doc@. (Using a @Doc@ allows rendered documents to wrap
+flexibly on breaking spaces.) A Context can be constructed manually or
+an aeson @Value@ may be used.
 
 Unlike the various HTML-centered template engines, doctemplates is
 output-format agnostic, so no automatic escaping is done on interpolated
@@ -86,8 +86,8 @@ names. Examples:
 > ${foo_bar.baz-bim}
 > ${ foo }
 
-The values of variables are determined by the 'Context' that is passed
-as a parameter to 'renderTemplate'. So, for example, @title@ will return
+The values of variables are determined by the @Context@ that is passed
+as a parameter to @renderTemplate@. So, for example, @title@ will return
 the value of the @title@ field, and @employee.salary@ will return the
 value of the @salary@ field of the object that is the value of the
 @employee@ field.
@@ -100,16 +100,13 @@ value of the @salary@ field of the object that is the value of the
 -   If the value is a map, the string @true@ will be rendered.
 -   Every other value will be rendered as the empty string.
 
-When a 'Context' is derived from an aeson (JSON) 'Value', the following
+When a @Context@ is derived from an aeson (JSON) @Value@, the following
 conversions are done:
 
 -   If the value is a number, it will be rendered as an integer if
     possible, otherwise as a floating-point number.
 -   If the value is a JSON boolean, it will be rendered as @true@ if
     true, and as the empty string if false.
-
-The value of a variable that occurs by itself on a line will be indented
-to the same level as the opening delimiter of the variable.
 
 == Conditionals
 
@@ -170,11 +167,13 @@ is equivalent to
 == For loops
 
 A for loop begins with @for(variable)@ (enclosed in matched delimiters)
-and ends with @endfor@ (enclosed in matched delimiters. If @variable@ is
-an array, the material inside the loop will be evaluated repeatedly,
-with @variable@ being set to each value of the array in turn. If the
-value of the associated variable is not an array, a single iteration
-will be performed on its value.
+and ends with @endfor@ (enclosed in matched delimiters.
+
+-   If @variable@ is an array, the material inside the loop will be
+    evaluated repeatedly, with @variable@ being set to each value of the
+    array in turn, and concatenated.
+-   If the value of the associated variable is not an array or a map, a
+    single iteration will be performed on its value.
 
 Examples:
 
@@ -254,35 +253,115 @@ The separator in this case is literal and (unlike with @sep@ in an
 explicit @for@ loop) cannot contain interpolated variables or other
 template directives.
 
+== Nesting
+
+To ensure that content is “nested,” that is, subsequent lines indented,
+use the @^@ directive:
+
+> $item.number$  $^$$item.description$ ($item.price$)
+
+In this example, if @item.description@ has multiple lines, they will all
+be indented to line up with the first line:
+
+> 00123  A fine bottle of 18-year old
+>        Oban whiskey. ($148)
+
+To nest multiple lines to the same level, align them with the @^@
+directive in the template. For example:
+
+> $item.number$  $^$$item.description$ ($item.price$)
+>                (Available til $item.sellby$.)
+
+will produce
+
+> 00123  A fine bottle of 18-year old
+>        Oban whiskey. ($148)
+>        (Available til March 30, 2020.)
+
+If a variable occurs by itself on a line, preceded by whitespace and not
+followed by further text or directives on the same line, and the
+variable’s value contains multiple lines, it will be nested
+automatically.
+
 == Breakable spaces
 
 When rendering to a @Doc@, a distinction can be made between breakable
 and unbreakable spaces. Normally, spaces in the template itself (as
 opposed to values of the interpolated variables) are not breakable, but
-they can be made breakable in part of the template by using the
-@+reflow@ keyword (ended with @-reflow@).
+they can be made breakable in part of the template by using the @~@
+keyword (ended with another @~@).
 
-> ${ +reflow }This long line may break if the document is rendered
-> with a short line length.${ -reflow }
+> $~$This long line may break if the document is rendered
+> with a short line length.$~$
 
-The @+@ keyword has no effect when rendering to @Text@ or @String@.
+The @~@ keyword has no effect when rendering to @Text@ or @String@.
 
-== Nesting
+== Filters
 
-As noted above, the value of a variable that occurs by itself on a line
-will be indented to the same level as the opening delimiter of the
-variable.
+A filter transforms the value of a variable. Filters are specified using
+a slash (@\/@) between the variable name and the filter name. They may
+go anywhere a variable can go. Example:
 
-In addition, any part of a template can be marked explicitly for
-indented rendering, using the @+nest@ keyword (o start nesting at the
-column where it appears) and @-nest@ to stop nesting.
-
-Example:
-
-> $for(article)$
-> - $+nest$$article.author$, "$article.title$," in $article.book$
->   ($article.year$).$-nest$
+> $for(name)$
+> $name/uppercase$
 > $endfor$
+>
+> $for(metadata/pairs)$
+> - $it.key$: $it.value$
+> $endfor$
+
+Filters may be chained:
+
+> $for(employees/pairs)$
+> $it.key/alpha/uppercase$. $it.name$
+> $endfor$
+
+Some filters take parameters:
+
+> |----------------------|------------|
+> $for(employee)$
+> $it.name.first/uppercase/left 20 "| "$$it.name.salary/right 10 " | " " |"$
+> $endfor$
+> |----------------------|------------|
+
+Currently the following filters are predefined:
+
+-   @pairs@: Converts a map or array to an array of maps, each with
+    @key@ and @value@ fields. If the original value was an array, the
+    @key@ will be the array index, starting with 1.
+
+-   @uppercase@: Converts a textual value to uppercase, and has no
+    effect on other values.
+
+-   @lowercase@: Converts a textual value to lowercase, and has no
+    effect on other values.
+
+-   @length@: Returns the length of the value: number of characters for
+    a textual value, number of elements for a map or array.
+
+-   @reverse@: Reverses a textual value or array, and has no effect on
+    other values.
+
+-   @alpha@: Converts a textual value that can be read as an integer
+    into a lowercase alphabetic character @a..z@ (mod 26), and has no
+    effect on other values. This can be used to get lettered enumeration
+    from array indices. To get uppercase letters, chain with
+    @uppercase@.
+
+-   @left n \"leftborder\" \"rightborder\"@: Renders a textual value in
+    a block of width @n@, aligned to the left, with an optional left and
+    right border. Has no effect on other values. This can be used to
+    align material in tables. Widths are positive integers indicating
+    the number of characters. Borders are strings inside double quotes;
+    literal @\"@ and @\\@ characters must be backslash-escaped.
+
+-   @right n \"leftborder\" \"rightborder\"@: Renders a textual value in
+    a block of width @n@, aligned to the right, and has no effect on
+    other values.
+
+-   @center n \"leftborder\" \"rightborder\"@: Renders a textual value
+    in a block of width @n@, aligned to the center, and has no effect on
+    other values.
 
 -}
 
