@@ -28,7 +28,7 @@ $bim.key$: $bim.value/lowercase$
 $endfor$
 
 $for(baz/pairs)$
-$it.key$. $it.value$
+$it.key/roman/uppercase/right 4$. $it.value$
 $endfor$
 
 $items/pairs/reverse:enum()$
@@ -51,8 +51,8 @@ B
 Zub: Sim
 Zub: sim
 
-1. a
-2. b
+   I. a
+  II. b
 
 C.  three with
     a line break

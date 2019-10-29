@@ -405,6 +405,12 @@ Currently the following filters are predefined:
   enumeration from array indices.  To get uppercase
   letters, chain with `uppercase`.
 
+- `roman`:  Converts a textual value that can be
+  read as an integer into a lowercase roman numerial,
+  and has no effect on other values.  This can be used
+  to get lettered enumeration from array indices.  To
+  get uppercase roman, chain with `uppercase`.
+
 - `left n "leftborder" "rightborder"`:  Renders a textual value
   in a block of width `n`, aligned to the left, with an optional
   left and right border.  Has no effect on other values. This

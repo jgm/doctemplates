@@ -411,6 +411,7 @@ pFilter = do
     "pairs"     -> return ToPairs
     "length"    -> return ToLength
     "alpha"     -> return ToAlpha
+    "roman"     -> return ToRoman
     "reverse"   -> return Reverse
     "left"      -> Block LeftAligned <$> pBlockWidth <*> pBlockBorders
     "right"     -> Block RightAligned <$> pBlockWidth <*> pBlockBorders

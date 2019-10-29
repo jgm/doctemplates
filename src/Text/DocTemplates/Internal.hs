@@ -93,6 +93,7 @@ data Filter =
     | ToLength
     | Reverse
     | ToAlpha
+    | ToRoman
     | Block Alignment Int Border
     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
@@ -322,6 +323,14 @@ applyFilter ToAlpha val =
                          [chr (ord 'a' + (y `mod` 26) - 1)]
         _            -> val
     _           -> val
+applyFilter ToRoman val =
+  case val of
+    SimpleVal (DL.Text _ t) ->
+      case T.decimal (toText t) of
+        Right (y,"") -> maybe val (SimpleVal . DL.literal . fromText)
+                                  (toRoman y)
+        _            -> val
+    _           -> val
 applyFilter (Block align n border) val =
   let constructor = case align of
                       LeftAligned  -> DL.lblock
@@ -340,6 +349,26 @@ applyFilter (Block align n border) val =
 nullToSimple :: Monoid a => Val a -> Val a
 nullToSimple NullVal = SimpleVal mempty
 nullToSimple x = x
+
+-- | Convert number 0 < x < 4000 to lowercase roman numeral.
+toRoman :: Int -> Maybe Text
+toRoman x
+  | x >= 1000
+  , x < 4000  = ("m" <>) <$> toRoman (x - 1000)
+  | x >= 900  = ("cm" <>) <$> toRoman (x - 900)
+  | x >= 500  = ("d" <>) <$> toRoman (x - 500)
+  | x >= 400  = ("cd" <>) <$> toRoman (x - 400)
+  | x >= 100  = ("c" <>) <$> toRoman (x - 100)
+  | x >= 90   = ("xc" <>) <$> toRoman (x - 90)
+  | x >= 50   = ("l" <>) <$> toRoman (x - 50)
+  | x >= 40   = ("xl" <>) <$> toRoman (x - 40)
+  | x >= 10   = ("x" <>) <$> toRoman (x - 10)
+  | x == 9    = return "ix"
+  | x >= 5    = ("v" <>) <$> toRoman (x - 5)
+  | x == 4    = return "iv"
+  | x >= 1    = ("i" <>) <$> toRoman (x - 1)
+  | x == 0    = return ""
+  | otherwise = Nothing
 
 applyFilters :: TemplateTarget a => [Filter] -> Val a -> Val a
 applyFilters fs x = foldr applyFilter x $ reverse fs
