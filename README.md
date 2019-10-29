@@ -29,6 +29,7 @@ import Data.Text (Text)
 import qualified Data.Text.IO as T
 import Data.Aeson
 import Text.DocTemplates
+import Text.DocLayout (render)
 
 data Employee = Employee { firstName :: String
                          , lastName  :: String
@@ -46,7 +47,7 @@ main = do
   res <- compileTemplate "mytemplate.txt" template
   case res of
          Left e    -> error e
-         Right t   -> T.putStrLn $ renderTemplate t $ object
+         Right t   -> T.putStrLn $ render Nothing $ renderTemplate t $ object
                         ["employee" .=
                           [ Employee "John" "Doe" Nothing
                           , Employee "Omar" "Smith" (Just 30000)
