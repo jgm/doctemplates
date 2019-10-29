@@ -207,7 +207,8 @@ skipEndline = do
            P.getPosition
   P.updateState $ \st -> st{ firstNonspace = pos }
 
-pReflowToggle :: (Monoid a, TemplateMonad m) => Parser m (Template a)
+pReflowToggle :: (Monoid a, Semigroup a, TemplateMonad m)
+              => Parser m (Template a)
 pReflowToggle = do
   pEnclosed $ P.char '~'
   P.modifyState $ \st -> st{ breakingSpaces = not (breakingSpaces st) }
