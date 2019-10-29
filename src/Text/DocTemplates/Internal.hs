@@ -82,7 +82,7 @@ instance Semigroup a => Semigroup (Template a) where
   Empty <> x = x
   x <> y = Concat x y
 
-instance Monoid a => Monoid (Template a) where
+instance Semigroup a => Monoid (Template a) where
   mappend = (<>)
   mempty = Empty
 
