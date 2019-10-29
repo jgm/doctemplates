@@ -8,15 +8,22 @@
    Portability : portable
 
 This is the text templating system used by pandoc. Its basic function is
-to fill holes in a template in a “Context” that provides values for
-variables. Control structures are provided to test that a variable has a
-non-blank value and to iterate over the items of a list. Partials—that
-is, subtemplates defined in different files—are also supported.
+to fill variables in a template. Variables are provided by a “context.”
+Any instance of the @ToContext@ typeclass (such as an aeson @Value@) can
+serve as the context, or a @Context@ value can be constructed manually.
 
-Templates may be rendered to lazy or strict @Text@, @String@, or a
-doclayout @Doc@. (Using a @Doc@ allows rendered documents to wrap
-flexibly on breaking spaces.) A Context can be constructed manually or
-an aeson @Value@ may be used.
+Control structures are provided to test whether a variable has a
+non-blank value and to iterate over the items of a list. Partials—that
+is, subtemplates defined in different files—are supported. Filters can
+be used to transform the values of variables or partials. The provided
+filters make it possible to do list enumeration and tabular layout in
+templates.
+
+Templates are rendered to a doclayout @Doc@ (which is polymorphic in the
+underlying string type). If @Doc@ values are used in the context,
+rendered documents will be able to wrap flexibly on breaking spaces.
+This feature makes doctemplates more suitable than other template
+engines for plain-text formats (like Markdown).
 
 Unlike the various HTML-centered template engines, doctemplates is
 output-format agnostic, so no automatic escaping is done on interpolated
