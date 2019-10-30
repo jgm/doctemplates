@@ -1,5 +1,78 @@
 # doctemplates
 
+## 0.7
+
+  * Add haddock Makefile target, which regenerates haddocks from README
+    and tests the code example.
+
+  * Remove `BreakingSpace` constructor on `Template`.
+    Now we use doclayout `BreakingSpace` inside a `Literal`.
+
+  * Add instance for `ToContext a (Doc a)`.
+
+  * Get benchmarks compiling again.
+
+  * Use (doclayout) `Doc` internally and for rendered output.
+
+    + `TemplateTarget` is now a type constraint synonym, not a regular
+      typeclass.
+    + Constraint on `compileTemplate` and `applyTemplate`
+      simplified using TemplateTarget.
+    + DocTemplates reexports Text.DocLayout.Doc.
+    + The `Literal` costructor of `Template` now takes a `Doc a`
+      rather than an `a`.
+    + The `SimpleVal` constructor of `Val` now takes a `Doc a`
+      rather than an `a`.
+    + `renderTemplate` now returns a `Doc a` rather than an `a`.
+      (This value can be converted to an a using `render Nothing`.)
+
+  * Remove fromText from `TemplateTarget`.  Now we use `fromString`
+    from Data.String.
+
+  * Parameterize `Template` on underlying stringlike type.
+
+  * Improved behavior of partials.
+
+  * Improve indent functions: don't drop final newline.
+
+  * Allow blank lines in nested section.
+
+  * Indent for Text/String: don't indent empty lines.
+
+  * Additional tests and documentation about nesting.
+
+  * Render items in for loop before separator.
+    Otherwise we throw off column calculation.
+
+  * Remove `+-reflow`; replace with toggle `$~$`.
+
+  * Remove pNewline parser; it isn't needed now.
+
+  * Remove `+-nest`.
+
+  * Fix nest parsing bug.
+
+  * Improve nesting.
+
+    + Change `Nested` constructor for `Template` so it doesn't take
+      a parameter.
+    + Nesting level is now determined dynamically at render time
+      rather than at compile time.  This gives much better results
+      when nesting occurs after template directives.
+      Benchmarks show a slight penalty in performance (from 3.5ms to 3.1ms
+      in rendering), but it's not too much.
+
+  * Add filters. Filters transform the value of a variable, e.g. changing
+    a map into an array of key/value pairs.  Closes #5.
+
+    + Internal: Add `Filter` type and `[Filter]` parameter on `Variable`.
+    + Remove `unVariable`; now we have `varParts` and `varFilters`.
+    + Document filters in README.md.
+    + Implement filters.
+    + Add tests.
+
+  * Add `ToYAML`, `FromYAML` instances for `Context`, `Val`.
+
 ## 0.6.2
 
   * Remove unnecessary `TemplateTarget` constraints on
