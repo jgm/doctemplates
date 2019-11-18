@@ -70,7 +70,7 @@ data Template a =
      | Conditional Variable (Template a) (Template a)
      | Iterate Variable (Template a) (Template a)
      | Nested (Template a)
-     | Partial (Template a)
+     | Partial [Filter] (Template a)
      | Literal (Doc a)
      | Concat (Template a) (Template a)
      | Empty
@@ -439,7 +439,11 @@ renderTemp (Iterate v t sep) ctx = do
 renderTemp (Nested t) ctx = do
   n <- S.get
   DL.nest n <$> renderTemp t ctx
-renderTemp (Partial t) ctx = renderTemp t ctx
+renderTemp (Partial fs t) ctx = do
+    val' <- renderTemp t ctx
+    return $ case applyFilters fs (SimpleVal val') of
+      SimpleVal x -> x
+      _           -> mempty
 renderTemp (Concat t1 t2) ctx =
   mappend <$> renderTemp t1 ctx <*> renderTemp t2 ctx
 renderTemp Empty _ = return mempty

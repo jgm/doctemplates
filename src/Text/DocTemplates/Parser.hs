@@ -253,7 +253,7 @@ changeToIt v = go
   go (Iterate w t1 t2) = Iterate (reletter v w)
         (changeToIt v t1) (changeToIt v t2)
   go (Concat t1 t2) = changeToIt v t1 <> changeToIt v t2
-  go (Partial t) = Partial t  -- don't reletter inside partial
+  go (Partial fs t) = Partial fs t  -- don't reletter inside partial
   go (Nested t) = Nested (go t)
   go x = x
   reletter (Variable vs _fs) (Variable ws gs) =
@@ -349,9 +349,10 @@ pPartial mbvar fp = do
             P.setPosition oldPos
             return res'
   P.putState oldst
+  fs <- many pFilter
   case mbvar of
-    Just var -> return $ Iterate var t separ
-    Nothing  -> return $ Partial t
+    Just var -> return $ Iterate var (Partial fs t) separ
+    Nothing  -> return $ Partial fs t
 
 removeFinalNewline :: Text -> Text
 removeFinalNewline t =

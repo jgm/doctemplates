@@ -350,10 +350,9 @@ or `String`.
 
 ## Filters
 
-A filter transforms the value of a variable.  Filters are
-specified using a slash (`/`) between the variable name and
-the filter name.  They may go anywhere a variable can go.
-Example:
+A filter transforms the value of a variable or partial.  Filters
+are specified using a slash (`/`) between the variable name (or
+partial) and the filter name.  Example:
 
 ```
 $for(name)$
@@ -363,6 +362,12 @@ $endfor$
 $for(metadata/pairs)$
 - $it.key$: $it.value$
 $endfor$
+```
+
+Filters may also be applied to the results of partials:
+
+```
+$employee:name()/uppercase$
 ```
 
 Filters may be chained:
