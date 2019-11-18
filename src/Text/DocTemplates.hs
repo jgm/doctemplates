@@ -306,9 +306,9 @@ The @~@ keyword has no effect when rendering to @Text@ or @String@.
 
 == Filters
 
-A filter transforms the value of a variable. Filters are specified using
-a slash (@\/@) between the variable name and the filter name. They may
-go anywhere a variable can go. Example:
+A filter transforms the value of a variable or partial. Filters are
+specified using a slash (@\/@) between the variable name (or partial)
+and the filter name. Example:
 
 > $for(name)$
 > $name/uppercase$
@@ -317,6 +317,10 @@ go anywhere a variable can go. Example:
 > $for(metadata/pairs)$
 > - $it.key$: $it.value$
 > $endfor$
+
+Filters may also be applied to the results of partials:
+
+> $employee:name()/uppercase$
 
 Filters may be chained:
 
@@ -350,6 +354,9 @@ Currently the following filters are predefined:
 -   @reverse@: Reverses a textual value or array, and has no effect on
     other values.
 
+-   @chomp@: Removes trailing newlines (and breakable space) from a
+    textual value, and has no effect on other values.
+
 -   @alpha@: Converts a textual value that can be read as an integer
     into a lowercase alphabetic character @a..z@ (mod 26), and has no
     effect on other values. This can be used to get lettered enumeration
@@ -375,8 +382,6 @@ Currently the following filters are predefined:
 -   @center n \"leftborder\" \"rightborder\"@: Renders a textual value
     in a block of width @n@, aligned to the center, and has no effect on
     other values.
-
-
 
 -}
 
