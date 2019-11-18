@@ -92,6 +92,7 @@ data Filter =
     | ToLowercase
     | ToLength
     | Reverse
+    | Chomp
     | ToAlpha
     | ToRoman
     | Block Alignment Int Border
@@ -314,6 +315,10 @@ applyFilter Reverse val =
     SimpleVal d -> SimpleVal . runIdentity $
                     traverse (pure . fromText . T.reverse . toText) d
     ListVal xs  -> ListVal (reverse xs)
+    _           -> val
+applyFilter Chomp val =
+  case val of
+    SimpleVal d -> SimpleVal $ DL.chomp d
     _           -> val
 applyFilter ToAlpha val =
   case val of

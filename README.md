@@ -408,6 +408,9 @@ Currently the following filters are predefined:
 - `reverse`:  Reverses a textual value or array,
   and has no effect on other values.
 
+- `chomp`:  Removes trailing newlines (and breakable space)
+  from a textual value, and has no effect on other values.
+
 - `alpha`:  Converts a textual value that can be
   read as an integer into a lowercase alphabetic
   character `a..z` (mod 26), and has no effect on

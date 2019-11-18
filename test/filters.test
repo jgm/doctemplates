@@ -6,7 +6,8 @@
            { "sax": 2 } ],
   "items": [ "one with\na line break",
             "two",
-            "three with\na line break" ]
+            "three with\na line break" ],
+  "hasblanks": "hello\n\n"
 }
 .
 $bar/length$
@@ -32,6 +33,8 @@ $it.key/roman/uppercase/right 4$. $it.value$
 $endfor$
 
 $items/pairs/reverse:enum()$
+
+($hasblanks/chomp$)
 .
 0
 2
@@ -59,3 +62,6 @@ C.  three with
 B.  two
 A.  one with
     a line break
+
+
+(hello)
