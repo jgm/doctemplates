@@ -362,11 +362,7 @@ $endfor$
 $for(metadata/pairs)$
 - $it.key$: $it.value$
 $endfor$
-```
 
-Filters may also be applied to the results of partials:
-
-```
 $employee:name()/uppercase$
 ```
 
