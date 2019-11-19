@@ -1,5 +1,11 @@
 # doctemplates
 
+## 0.7.1
+
+  * Add `chomp` filter.
+
+  * Allow filters to be applied to output of partials.
+
 ## 0.7
 
   * Add haddock Makefile target, which regenerates haddocks from README
