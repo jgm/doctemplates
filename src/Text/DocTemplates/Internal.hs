@@ -95,6 +95,7 @@ data Filter =
     | Chomp
     | ToAlpha
     | ToRoman
+    | NoWrap
     | Block Alignment Int Border
     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
@@ -281,6 +282,14 @@ instance TemplateTarget a => ToYAML (Val a) where
   toYAML (ListVal xs) = toYAML xs
   toYAML (SimpleVal d) = toYAML $ toText $ DL.render Nothing d
 
+mapDoc :: TemplateTarget a => (Doc a -> Doc a) -> Val a -> Val a
+mapDoc f val =
+  case val of
+    SimpleVal d        -> SimpleVal (f d)
+    MapVal (Context m) -> MapVal (Context $ M.map (mapDoc f) m)
+    ListVal xs         -> ListVal $ map (mapDoc f) xs
+    NullVal            -> NullVal
+
 applyFilter :: TemplateTarget a => Filter -> Val a -> Val a
 applyFilter ToLength val = SimpleVal $ fromString . show $ len
   where
@@ -336,6 +345,7 @@ applyFilter ToRoman val =
                                   (toRoman y)
         _            -> val
     _           -> val
+applyFilter NoWrap val = mapDoc DL.nowrap val
 applyFilter (Block align n border) val =
   let constructor = case align of
                       LeftAligned  -> DL.lblock

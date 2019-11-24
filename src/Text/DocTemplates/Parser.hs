@@ -416,6 +416,7 @@ pFilter = do
     "roman"     -> return ToRoman
     "reverse"   -> return Reverse
     "chomp"     -> return Chomp
+    "nowrap"    -> return NoWrap
     "left"      -> Block LeftAligned <$> pBlockWidth <*> pBlockBorders
     "right"     -> Block RightAligned <$> pBlockWidth <*> pBlockBorders
     "center"    -> Block Centered <$> pBlockWidth <*> pBlockBorders

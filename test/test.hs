@@ -2,6 +2,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 import Text.DocLayout (render)
+import qualified Text.DocLayout as DL
+import qualified Data.Map as M
 import Text.DocTemplates
 import Test.Tasty.Golden
 import Test.Tasty
@@ -65,6 +67,19 @@ unitTests = [
                    (renderTemplate t (object ["foo" .= ("42" :: T.Text)]))
                   Left e  -> T.pack e
       res @?= "not breakable and\nthis is\nbreakable\nok? 42"
+  , testCase "nowrap filter" $ do
+      (templ :: Either String (Template T.Text)) <-
+        compileTemplate "foo" "$foo/nowrap$\n$foo$"
+      let res :: T.Text
+          res = case templ of
+                  Right t -> render (Just 10)
+                   (renderTemplate t (Context $ M.insert "foo"
+                     (SimpleVal $
+                       DL.hsep ["hello", "this", "is", "a",
+                                "test", "of", "the", "wrapping"]
+                       :: Val T.Text) mempty))
+                  Left e  -> T.pack e
+      res @?= "hello this is a test of the wrapping\nhello this\nis a test\nof the\nwrapping"
   ]
 
 {- The test "golden" files are structured as follows:

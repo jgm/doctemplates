@@ -407,6 +407,9 @@ Currently the following filters are predefined:
 - `chomp`:  Removes trailing newlines (and breakable space)
   from a textual value, and has no effect on other values.
 
+- `nowrap`:  Disables line wrapping on breakable spaces in
+  all textual values nested in the variable.
+
 - `alpha`:  Converts a textual value that can be
   read as an integer into a lowercase alphabetic
   character `a..z` (mod 26), and has no effect on
