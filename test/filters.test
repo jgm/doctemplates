@@ -7,7 +7,10 @@
   "items": [ "one with\na line break",
             "two",
             "three with\na line break" ],
-  "hasblanks": "hello\n\n"
+  "hasblanks": "hello\n\n",
+  "hasblanksmap": { "a": "hello\n\n",
+                    "b": "there\n\n" },
+  "digits": [1, 5, 20]
 }
 .
 $bar/length$
@@ -15,6 +18,8 @@ $baz/length$
 $bim.Zub/length$
 $bim/length$
 $sup/length$
+
+$baz/uppercase[, ]$
 
 $for(baz)$
 $it$
@@ -35,12 +40,20 @@ $endfor$
 $items/pairs/reverse:enum()$
 
 ($hasblanks/chomp$)
+
+$for(hasblanksmap/chomp/pairs/uppercase)$
+$it.key$ ($it.value$)
+$endfor$
+
+$digits/roman[ ]$
 .
 0
 2
 3
 1
 2
+
+A, B
 
 a
 A
@@ -65,3 +78,8 @@ A.  one with
 
 
 (hello)
+
+A (HELLO)
+B (THERE)
+
+i v xx

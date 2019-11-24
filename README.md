@@ -391,11 +391,9 @@ Currently the following filters are predefined:
   value was an array, the `key` will be the array index,
   starting with 1.
 
-- `uppercase`:  Converts a textual value to uppercase,
-  and has no effect on other values.
+- `uppercase`:  Converts text to uppercase.
 
-- `lowercase`:  Converts a textual value to lowercase,
-  and has no effect on other values.
+- `lowercase`:  Converts text to lowercase.
 
 - `length`:  Returns the length of the value:  number
   of characters for a textual value, number of elements
@@ -404,24 +402,20 @@ Currently the following filters are predefined:
 - `reverse`:  Reverses a textual value or array,
   and has no effect on other values.
 
-- `chomp`:  Removes trailing newlines (and breakable space)
-  from a textual value, and has no effect on other values.
+- `chomp`:  Removes trailing newlines (and breakable space).
 
-- `nowrap`:  Disables line wrapping on breakable spaces in
-  all textual values nested in the variable.
+- `nowrap`:  Disables line wrapping on breakable spaces.
 
-- `alpha`:  Converts a textual value that can be
-  read as an integer into a lowercase alphabetic
-  character `a..z` (mod 26), and has no effect on
-  other values.  This can be used to get lettered
+- `alpha`:  Converts textual values that can be
+  read as an integer into lowercase alphabetic
+  characters `a..z` (mod 26). This can be used to get lettered
   enumeration from array indices.  To get uppercase
   letters, chain with `uppercase`.
 
-- `roman`:  Converts a textual value that can be
-  read as an integer into a lowercase roman numerial,
-  and has no effect on other values.  This can be used
-  to get lettered enumeration from array indices.  To
-  get uppercase roman, chain with `uppercase`.
+- `roman`:  Converts textual values that can be
+  read as an integer into lowercase roman numerials.
+  This can be used to get lettered enumeration from array indices.
+  To get uppercase roman, chain with `uppercase`.
 
 - `left n "leftborder" "rightborder"`:  Renders a textual value
   in a block of width `n`, aligned to the left, with an optional

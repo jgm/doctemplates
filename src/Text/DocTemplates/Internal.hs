@@ -290,6 +290,10 @@ mapDoc f val =
     ListVal xs         -> ListVal $ map (mapDoc f) xs
     NullVal            -> NullVal
 
+mapText :: TemplateTarget a => (Text -> Text) -> Val a -> Val a
+mapText f val =
+  runIdentity (traverse (return . fromText . f . toText) val)
+
 applyFilter :: TemplateTarget a => Filter -> Val a -> Val a
 applyFilter ToLength val = SimpleVal $ fromString . show $ len
   where
@@ -298,16 +302,8 @@ applyFilter ToLength val = SimpleVal $ fromString . show $ len
            MapVal (Context m) -> M.size m
            ListVal xs         -> length xs
            NullVal            -> 0
-applyFilter ToUppercase val =
-  case val of
-    SimpleVal d -> SimpleVal . runIdentity $
-                    traverse (pure . fromText . T.toUpper . toText) d
-    _ -> val
-applyFilter ToLowercase val =
-  case val of
-    SimpleVal d -> SimpleVal . runIdentity $
-                    traverse (pure . fromText . T.toLower . toText) d
-    _ -> val
+applyFilter ToUppercase val = mapText T.toUpper val
+applyFilter ToLowercase val = mapText T.toLower val
 applyFilter ToPairs val =
   case val of
     MapVal (Context m) ->
@@ -321,30 +317,20 @@ applyFilter ToPairs val =
                     , ("value", v) ]
 applyFilter Reverse val =
   case val of
-    SimpleVal d -> SimpleVal . runIdentity $
-                    traverse (pure . fromText . T.reverse . toText) d
     ListVal xs  -> ListVal (reverse xs)
+    SimpleVal{} -> mapText T.reverse val
     _           -> val
-applyFilter Chomp val =
-  case val of
-    SimpleVal d -> SimpleVal $ DL.chomp d
-    _           -> val
-applyFilter ToAlpha val =
-  case val of
-    SimpleVal (DL.Text _ t) ->
-      case T.decimal (toText t) of
-        Right (y,"") -> SimpleVal $ fromString
-                         [chr (ord 'a' + (y `mod` 26) - 1)]
-        _            -> val
-    _           -> val
-applyFilter ToRoman val =
-  case val of
-    SimpleVal (DL.Text _ t) ->
-      case T.decimal (toText t) of
-        Right (y,"") -> maybe val (SimpleVal . DL.literal . fromText)
-                                  (toRoman y)
-        _            -> val
-    _           -> val
+applyFilter Chomp val = mapDoc DL.chomp val
+applyFilter ToAlpha val = mapText toAlpha val
+  where toAlpha t =
+          case T.decimal t of
+            Right (y,"") -> fromString [chr (ord 'a' + (y `mod` 26) - 1)]
+            _            -> t
+applyFilter ToRoman val = mapText toRoman' val
+  where toRoman' t =
+         case T.decimal t of
+           Right (y,"") -> maybe t id (toRoman y)
+           _            -> t
 applyFilter NoWrap val = mapDoc DL.nowrap val
 applyFilter (Block align n border) val =
   let constructor = case align of
