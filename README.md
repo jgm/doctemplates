@@ -192,6 +192,8 @@ delimiters.
 - If `variable` is an array, the material inside the loop will
   be evaluated repeatedly, with `variable` being set to each
   value of the array in turn, and concatenated.
+- If `variable` is a map, the material inside will be set to
+  the map.
 - If the value of the associated variable is not an array or
   a map, a single iteration will be performed on its value.
 
@@ -207,6 +209,10 @@ $endfor$
 ${ for(foo.bar) }
   - ${ foo.bar.last }, ${ foo.bar.first }
 ${ endfor }
+
+$for(mymap)$
+$it.name$: $it.office$
+$endfor$
 ```
 
 You may optionally specify a separator between consecutive

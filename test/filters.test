@@ -46,6 +46,10 @@ $it.key$ ($it.value$)
 $endfor$
 
 $digits/roman[ ]$
+
+$for(bim/uppercase)$
+$it.Zub$
+$endfor$
 .
 0
 2
@@ -83,3 +87,5 @@ A (HELLO)
 B (THERE)
 
 i v xx
+
+SIM

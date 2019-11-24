@@ -409,6 +409,8 @@ withVariable  v ctx f =
     NullVal     -> return mempty
     ListVal xs  -> mapM (\iterval -> f $
                     Context $ M.insert "it" iterval $ unContext ctx) xs
+    MapVal ctx' -> (:[]) <$> f
+                    (Context $ M.insert "it" (MapVal ctx') $ unContext ctx)
     val' -> (:[]) <$> f (Context $ M.insert "it" val' $ unContext ctx)
 
 type RenderState = S.State Int
