@@ -180,6 +180,7 @@ and ends with @endfor@ (enclosed in matched delimiters.
 -   If @variable@ is an array, the material inside the loop will be
     evaluated repeatedly, with @variable@ being set to each value of the
     array in turn, and concatenated.
+-   If @variable@ is a map, the material inside will be set to the map.
 -   If the value of the associated variable is not an array or a map, a
     single iteration will be performed on its value.
 
@@ -194,6 +195,10 @@ Examples:
 > ${ for(foo.bar) }
 >   - ${ foo.bar.last }, ${ foo.bar.first }
 > ${ endfor }
+>
+> $for(mymap)$
+> $it.name$: $it.office$
+> $endfor$
 
 You may optionally specify a separator between consecutive values using
 @sep@ (enclosed in matched delimiters). The material between @sep@ and
@@ -317,9 +322,7 @@ and the filter name. Example:
 > $for(metadata/pairs)$
 > - $it.key$: $it.value$
 > $endfor$
-
-Filters may also be applied to the results of partials:
-
+>
 > $employee:name()/uppercase$
 
 Filters may be chained:
@@ -342,11 +345,9 @@ Currently the following filters are predefined:
     @key@ and @value@ fields. If the original value was an array, the
     @key@ will be the array index, starting with 1.
 
--   @uppercase@: Converts a textual value to uppercase, and has no
-    effect on other values.
+-   @uppercase@: Converts text to uppercase.
 
--   @lowercase@: Converts a textual value to lowercase, and has no
-    effect on other values.
+-   @lowercase@: Converts text to lowercase.
 
 -   @length@: Returns the length of the value: number of characters for
     a textual value, number of elements for a map or array.
@@ -354,19 +355,19 @@ Currently the following filters are predefined:
 -   @reverse@: Reverses a textual value or array, and has no effect on
     other values.
 
--   @chomp@: Removes trailing newlines (and breakable space) from a
-    textual value, and has no effect on other values.
+-   @chomp@: Removes trailing newlines (and breakable space).
 
--   @alpha@: Converts a textual value that can be read as an integer
-    into a lowercase alphabetic character @a..z@ (mod 26), and has no
-    effect on other values. This can be used to get lettered enumeration
-    from array indices. To get uppercase letters, chain with
+-   @nowrap@: Disables line wrapping on breakable spaces.
+
+-   @alpha@: Converts textual values that can be read as an integer into
+    lowercase alphabetic characters @a..z@ (mod 26). This can be used to
+    get lettered enumeration from array indices. To get uppercase
+    letters, chain with @uppercase@.
+
+-   @roman@: Converts textual values that can be read as an integer into
+    lowercase roman numerials. This can be used to get lettered
+    enumeration from array indices. To get uppercase roman, chain with
     @uppercase@.
-
--   @roman@: Converts a textual value that can be read as an integer
-    into a lowercase roman numerial, and has no effect on other values.
-    This can be used to get lettered enumeration from array indices. To
-    get uppercase roman, chain with @uppercase@.
 
 -   @left n \"leftborder\" \"rightborder\"@: Renders a textual value in
     a block of width @n@, aligned to the left, with an optional left and

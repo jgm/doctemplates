@@ -1,5 +1,17 @@
 # doctemplates
 
+## 0.7.2
+
+  * Add `nowrap` filter.
+
+  * Improve `alpha`, `roman`, `uppercase`, `lowercase` filters so they
+    apply recursively within a list or map.
+
+  * Allow `for` loops to bind map value.  In this case there is no
+    iteration, but the anophoric variable 'it' is assigned, which may
+    help in using filters that destructure a string into a map (if
+    we add any).
+
 ## 0.7.1
 
   * Add `chomp` filter.
