@@ -1,5 +1,11 @@
 # doctemplates
 
+## 0.8
+
+  * Change `Filter` data type to `Pipe`.  Use the nomenclature of
+    "pipe" instead of "filter" to avoid confusion in pandoc between
+    two notions of filter.  Otherwise everything works the same.
+
 ## 0.7.2
 
   * Add `nowrap` filter.
