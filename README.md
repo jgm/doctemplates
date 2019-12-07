@@ -11,9 +11,9 @@ can serve as the context, or a `Context` value can be constructed manually.
 
 Control structures are provided to test whether a variable has a non-blank
 value and to iterate over the items of a list.  Partials---that is,
-subtemplates defined in different files---are supported.  Filters
+subtemplates defined in different files---are supported.  Pipes
 can be used to transform the values of variables or partials.
-The provided filters make it possible to do list enumeration and
+The provided pipes make it possible to do list enumeration and
 tabular layout in templates.
 
 Templates are rendered to a doclayout `Doc` (which is polymorphic
@@ -354,11 +354,11 @@ with a short line length.$~$
 The `~` keyword has no effect when rendering to `Text`
 or `String`.
 
-## Filters
+## Pipes
 
-A filter transforms the value of a variable or partial.  Filters
+A pipe transforms the value of a variable or partial.  Pipes
 are specified using a slash (`/`) between the variable name (or
-partial) and the filter name.  Example:
+partial) and the pipe name.  Example:
 
 ```
 $for(name)$
@@ -372,7 +372,7 @@ $endfor$
 $employee:name()/uppercase$
 ```
 
-Filters may be chained:
+Pipes may be chained:
 
 ```
 $for(employees/pairs)$
@@ -380,7 +380,7 @@ $it.key/alpha/uppercase$. $it.name$
 $endfor$
 ```
 
-Some filters take parameters:
+Some pipes take parameters:
 
 ```
 |----------------------|------------|
@@ -390,7 +390,7 @@ $endfor$
 |----------------------|------------|
 ```
 
-Currently the following filters are predefined:
+Currently the following pipes are predefined:
 
 - `pairs`:  Converts a map or array to an array of maps,
   each with `key` and `value` fields.  If the original

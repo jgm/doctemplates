@@ -1,9 +1,9 @@
 name:                doctemplates
-version:             0.7.2
+version:             0.8
 synopsis:            Pandoc-style document templates
 description:         This is the text templating system used by pandoc.
                      It supports variable interpolation, iteration,
-                     tests for non-blank values, filters, and partials.
+                     tests for non-blank values, pipes, and partials.
                      Templates are rendered to doclayout Docs,
                      and variable values may come from a variety of
                      different sources, including aeson Values.

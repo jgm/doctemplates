@@ -33,7 +33,7 @@ module Text.DocTemplates.Internal
       , TemplateTarget
       , Template(..)
       , Variable(..)
-      , Filter(..)
+      , Pipe(..)
       , Alignment(..)
       , Border(..)
       ) where
@@ -70,7 +70,7 @@ data Template a =
      | Conditional Variable (Template a) (Template a)
      | Iterate Variable (Template a) (Template a)
      | Nested (Template a)
-     | Partial [Filter] (Template a)
+     | Partial [Pipe] (Template a)
      | Literal (Doc a)
      | Concat (Template a) (Template a)
      | Empty
@@ -86,7 +86,7 @@ instance Semigroup a => Monoid (Template a) where
   mappend = (<>)
   mempty = Empty
 
-data Filter =
+data Pipe =
       ToPairs
     | ToUppercase
     | ToLowercase
@@ -115,7 +115,7 @@ data Border = Border
 data Variable =
   Variable
     { varParts   :: [Text]
-    , varFilters :: [Filter]
+    , varPipes   :: [Pipe]
     }
   deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
@@ -294,17 +294,17 @@ mapText :: TemplateTarget a => (Text -> Text) -> Val a -> Val a
 mapText f val =
   runIdentity (traverse (return . fromText . f . toText) val)
 
-applyFilter :: TemplateTarget a => Filter -> Val a -> Val a
-applyFilter ToLength val = SimpleVal $ fromString . show $ len
+applyPipe :: TemplateTarget a => Pipe -> Val a -> Val a
+applyPipe ToLength val = SimpleVal $ fromString . show $ len
   where
    len = case val of
            SimpleVal d        -> T.length . toText $ DL.render Nothing d
            MapVal (Context m) -> M.size m
            ListVal xs         -> length xs
            NullVal            -> 0
-applyFilter ToUppercase val = mapText T.toUpper val
-applyFilter ToLowercase val = mapText T.toLower val
-applyFilter ToPairs val =
+applyPipe ToUppercase val = mapText T.toUpper val
+applyPipe ToLowercase val = mapText T.toLower val
+applyPipe ToPairs val =
   case val of
     MapVal (Context m) ->
       ListVal $ map toPair $ M.toList m
@@ -315,24 +315,24 @@ applyFilter ToPairs val =
   toPair (k, v) = MapVal $ Context $ M.fromList
                     [ ("key", SimpleVal $ fromString . T.unpack $ k)
                     , ("value", v) ]
-applyFilter Reverse val =
+applyPipe Reverse val =
   case val of
     ListVal xs  -> ListVal (reverse xs)
     SimpleVal{} -> mapText T.reverse val
     _           -> val
-applyFilter Chomp val = mapDoc DL.chomp val
-applyFilter ToAlpha val = mapText toAlpha val
+applyPipe Chomp val = mapDoc DL.chomp val
+applyPipe ToAlpha val = mapText toAlpha val
   where toAlpha t =
           case T.decimal t of
             Right (y,"") -> fromString [chr (ord 'a' + (y `mod` 26) - 1)]
             _            -> t
-applyFilter ToRoman val = mapText toRoman' val
+applyPipe ToRoman val = mapText toRoman' val
   where toRoman' t =
          case T.decimal t of
            Right (y,"") -> maybe t id (toRoman y)
            _            -> t
-applyFilter NoWrap val = mapDoc DL.nowrap val
-applyFilter (Block align n border) val =
+applyPipe NoWrap val = mapDoc DL.nowrap val
+applyPipe (Block align n border) val =
   let constructor = case align of
                       LeftAligned  -> DL.lblock
                       Centered     -> DL.cblock
@@ -371,8 +371,8 @@ toRoman x
   | x == 0    = return ""
   | otherwise = Nothing
 
-applyFilters :: TemplateTarget a => [Filter] -> Val a -> Val a
-applyFilters fs x = foldr applyFilter x $ reverse fs
+applyPipes :: TemplateTarget a => [Pipe] -> Val a -> Val a
+applyPipes fs x = foldr applyPipe x $ reverse fs
 
 multiLookup :: TemplateTarget a => [Text] -> Val a -> Val a
 multiLookup [] x = x
@@ -387,7 +387,7 @@ resolveVariable v ctx = resolveVariable' v (MapVal ctx)
 
 resolveVariable' :: TemplateTarget a => Variable -> Val a -> [Doc a]
 resolveVariable' v val =
-  case applyFilters (varFilters v) $ multiLookup (varParts v) val of
+  case applyPipes (varPipes v) $ multiLookup (varParts v) val of
     ListVal xs    -> concatMap (resolveVariable' mempty) xs
     SimpleVal d
       | DL.isEmpty d -> []
@@ -405,7 +405,7 @@ withVariable :: (Monad m, TemplateTarget a)
              => Variable -> Context a -> (Context a -> m (Doc a))
              -> m [Doc a]
 withVariable  v ctx f =
-  case applyFilters (varFilters v) $ multiLookup (varParts v) (MapVal ctx) of
+  case applyPipes (varPipes v) $ multiLookup (varParts v) (MapVal ctx) of
     NullVal     -> return mempty
     ListVal xs  -> mapM (\iterval -> f $
                     Context $ M.insert "it" iterval $ unContext ctx) xs
@@ -444,7 +444,7 @@ renderTemp (Nested t) ctx = do
   DL.nest n <$> renderTemp t ctx
 renderTemp (Partial fs t) ctx = do
     val' <- renderTemp t ctx
-    return $ case applyFilters fs (SimpleVal val') of
+    return $ case applyPipes fs (SimpleVal val') of
       SimpleVal x -> x
       _           -> mempty
 renderTemp (Concat t1 t2) ctx =

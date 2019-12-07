@@ -349,7 +349,7 @@ pPartial mbvar fp = do
             P.setPosition oldPos
             return res'
   P.putState oldst
-  fs <- many pFilter
+  fs <- many pPipe
   case mbvar of
     Just var -> return $ Iterate var (Partial fs t) separ
     Nothing  -> return $ Partial fs t
@@ -399,15 +399,15 @@ pVar :: Monad m => Parser m Variable
 pVar = do
   first <- pIdentPart <|> pIt
   rest <- P.many (P.char '.' *> pIdentPart)
-  filters <- P.many pFilter
-  return $ Variable (first:rest) filters
+  pipes <- P.many pPipe
+  return $ Variable (first:rest) pipes
 
-pFilter :: Monad m => Parser m Filter
-pFilter = do
+pPipe :: Monad m => Parser m Pipe
+pPipe = do
   P.char '/'
-  filterName <- P.many1 P.letter
+  pipeName <- P.many1 P.letter
   P.notFollowedBy P.letter
-  case filterName of
+  case pipeName of
     "uppercase" -> return ToUppercase
     "lowercase" -> return ToLowercase
     "pairs"     -> return ToPairs
@@ -420,7 +420,7 @@ pFilter = do
     "left"      -> Block LeftAligned <$> pBlockWidth <*> pBlockBorders
     "right"     -> Block RightAligned <$> pBlockWidth <*> pBlockBorders
     "center"    -> Block Centered <$> pBlockWidth <*> pBlockBorders
-    _           -> fail $ "Unknown filter " ++ filterName
+    _           -> fail $ "Unknown pipe " ++ pipeName
 
 pBlockWidth :: Monad m => Parser m Int
 pBlockWidth = P.try (do
@@ -428,8 +428,8 @@ pBlockWidth = P.try (do
   ds <- P.many1 P.digit
   case T.decimal (T.pack ds) of
         Right (n,"") -> return n
-        _            -> fail "Expected integer parameter for filter") P.<?>
-          "integer parameter for filter"
+        _            -> fail "Expected integer parameter for pipe") P.<?>
+          "integer parameter for pipe"
 
 pBlockBorders :: Monad m => Parser m Border
 pBlockBorders = do

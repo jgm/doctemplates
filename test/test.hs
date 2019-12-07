@@ -38,18 +38,18 @@ unitTests = [
     (res :: Either String (Template T.Text)) <-
         compileTemplate "foobar.txt" "$sep$"
     res @?= Left "\"foobar.txt\" (line 1, column 5):\nunexpected \"$\"\nexpecting letter or digit or \"()\""
-  , testCase "compile failure (unknown filter)" $ do
+  , testCase "compile failure (unknown pipe)" $ do
     (res :: Either String (Template T.Text)) <-
         compileTemplate "foobar.txt" "$foo/nope$"
-    res @?= Left "\"foobar.txt\" (line 1, column 10):\nunexpected \"$\"\nexpecting letter, letter or digit or \"()\"\nUnknown filter nope"
-  , testCase "compile failure (missing parameter for filter)" $ do
+    res @?= Left "\"foobar.txt\" (line 1, column 10):\nunexpected \"$\"\nexpecting letter, letter or digit or \"()\"\nUnknown pipe nope"
+  , testCase "compile failure (missing parameter for pipe)" $ do
     (res :: Either String (Template T.Text)) <-
         compileTemplate "foobar.txt" "$foo/left$"
-    res @?=  Left "\"foobar.txt\" (line 1, column 10):\nunexpected \"$\"\nexpecting letter, integer parameter for filter, letter or digit or \"()\""
-  , testCase "compile failure (unexpected parameter for filter)" $ do
+    res @?=  Left "\"foobar.txt\" (line 1, column 10):\nunexpected \"$\"\nexpecting letter, integer parameter for pipe, letter or digit or \"()\""
+  , testCase "compile failure (unexpected parameter for pipe)" $ do
     (res :: Either String (Template T.Text)) <-
         compileTemplate "foobar.txt" "$foo/left a$"
-    res @?= Left "\"foobar.txt\" (line 1, column 11):\nunexpected \"a\"\nexpecting integer parameter for filter"
+    res @?= Left "\"foobar.txt\" (line 1, column 11):\nunexpected \"a\"\nexpecting integer parameter for pipe"
   , testCase "compile failure (error in partial)" $ do
       (res :: Either String (Template T.Text)) <-
          compileTemplate "test/foobar.txt" "$bad()$"
@@ -67,7 +67,7 @@ unitTests = [
                    (renderTemplate t (object ["foo" .= ("42" :: T.Text)]))
                   Left e  -> T.pack e
       res @?= "not breakable and\nthis is\nbreakable\nok? 42"
-  , testCase "nowrap filter" $ do
+  , testCase "nowrap pipe" $ do
       (templ :: Either String (Template T.Text)) <-
         compileTemplate "foo" "$foo/nowrap$\n$foo$"
       let res :: T.Text
