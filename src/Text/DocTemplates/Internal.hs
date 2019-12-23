@@ -131,8 +131,23 @@ type TemplateTarget a =
 
 -- | A 'Context' defines values for template's variables.
 newtype Context a = Context { unContext :: M.Map Text (Val a) }
-  deriving (Show, Semigroup, Monoid, Traversable, Foldable, Functor,
-            Data, Typeable)
+  deriving (Show, Traversable, Foldable, Functor, Data, Typeable)
+
+instance Semigroup (Context a) where
+  Context m1 <> Context m2 = Context (M.unionWith combine m1 m2)
+
+combine :: Val a -> Val a -> Val a
+combine NullVal x = x
+combine x NullVal = x
+combine (ListVal xs) (ListVal ys) = ListVal (xs <> ys)
+combine (SimpleVal x) (ListVal ys) = ListVal (SimpleVal x : ys)
+combine (ListVal xs) (SimpleVal y) = ListVal (xs <> [SimpleVal y])
+combine (MapVal x) (MapVal y) = MapVal (x <> y)
+combine x y = ListVal [x, y]
+
+instance Monoid (Context a) where
+  mappend = (<>)
+  mempty = Context mempty
 
 -- | A variable value.
 data Val a =
