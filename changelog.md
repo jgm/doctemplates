@@ -1,5 +1,11 @@
 # doctemplates
 
+## 0.8.1
+
+  * Depend on doclayout 0.3, which adds an additional method
+    on the HasChars class.  This fixes some stack overflows
+    in rendering very long lines.
+
 ## 0.8
 
   * Change `Filter` data type to `Pipe`.  Use the nomenclature of
