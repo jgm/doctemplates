@@ -415,9 +415,9 @@ pPipe = do
     "alpha"      -> return ToAlpha
     "roman"      -> return ToRoman
     "reverse"    -> return Reverse
-    "first"      -> return First
+    "first"      -> return FirstItem
     "rest"       -> return Rest
-    "last"       -> return Last
+    "last"       -> return LastItem
     "allbutlast" -> return AllButLast
     "chomp"      -> return Chomp
     "nowrap"     -> return NoWrap

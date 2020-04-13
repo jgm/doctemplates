@@ -92,8 +92,8 @@ data Pipe =
     | ToLowercase
     | ToLength
     | Reverse
-    | First
-    | Last
+    | FirstItem
+    | LastItem
     | Rest
     | AllButLast
     | Chomp
@@ -319,11 +319,11 @@ applyPipe ToPairs val =
   toPair (k, v) = MapVal $ Context $ M.fromList
                     [ ("key", SimpleVal $ fromString . T.unpack $ k)
                     , ("value", v) ]
-applyPipe First val =
+applyPipe FirstItem val =
   case val of
     ListVal (x:_) -> x
     _             -> val
-applyPipe Last val =
+applyPipe LastItem val =
   case val of
     ListVal xs@(_:_) -> last xs
     _                -> val
