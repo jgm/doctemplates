@@ -1,5 +1,9 @@
 # doctemplates
 
+## 0.8.2
+
+  * Add filters: first, rest, last, allbutlast.
+
 ## 0.8.1
 
   * Depend on doclayout 0.3, which adds an additional method
