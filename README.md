@@ -397,6 +397,22 @@ Currently the following pipes are predefined:
   value was an array, the `key` will be the array index,
   starting with 1.
 
+- `first`: Returns the first value of an array, if
+  applied to a non-empty array; otherwise returns
+  the original value.
+
+- `last`: Returns the last value of an array, if
+  applied to a non-empty array; otherwise returns
+  the original value.
+
+- `rest`: Returns all but the first value of an array, if
+  applied to a non-empty array; otherwise returns
+  the original value.
+
+- `allbutlast`: Returns all but the last value of an array, if
+  applied to a non-empty array; otherwise returns
+  the original value.
+
 - `uppercase`:  Converts text to uppercase.
 
 - `lowercase`:  Converts text to lowercase.

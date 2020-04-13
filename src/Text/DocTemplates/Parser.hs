@@ -408,19 +408,23 @@ pPipe = do
   pipeName <- P.many1 P.letter
   P.notFollowedBy P.letter
   case pipeName of
-    "uppercase" -> return ToUppercase
-    "lowercase" -> return ToLowercase
-    "pairs"     -> return ToPairs
-    "length"    -> return ToLength
-    "alpha"     -> return ToAlpha
-    "roman"     -> return ToRoman
-    "reverse"   -> return Reverse
-    "chomp"     -> return Chomp
-    "nowrap"    -> return NoWrap
-    "left"      -> Block LeftAligned <$> pBlockWidth <*> pBlockBorders
-    "right"     -> Block RightAligned <$> pBlockWidth <*> pBlockBorders
-    "center"    -> Block Centered <$> pBlockWidth <*> pBlockBorders
-    _           -> fail $ "Unknown pipe " ++ pipeName
+    "uppercase"  -> return ToUppercase
+    "lowercase"  -> return ToLowercase
+    "pairs"      -> return ToPairs
+    "length"     -> return ToLength
+    "alpha"      -> return ToAlpha
+    "roman"      -> return ToRoman
+    "reverse"    -> return Reverse
+    "first"      -> return First
+    "rest"       -> return Rest
+    "last"       -> return Last
+    "allbutlast" -> return AllButLast
+    "chomp"      -> return Chomp
+    "nowrap"     -> return NoWrap
+    "left"       -> Block LeftAligned <$> pBlockWidth <*> pBlockBorders
+    "right"      -> Block RightAligned <$> pBlockWidth <*> pBlockBorders
+    "center"     -> Block Centered <$> pBlockWidth <*> pBlockBorders
+    _            -> fail $ "Unknown pipe " ++ pipeName
 
 pBlockWidth :: Monad m => Parser m Int
 pBlockWidth = P.try (do
