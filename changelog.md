@@ -4,6 +4,9 @@
 
   * Add filters: first, rest, last, allbutlast.
 
+  * New constructors for Filter: FirstItem, LastItem, Rest, AllButLast
+    [API change].
+
 ## 0.8.1
 
   * Depend on doclayout 0.3, which adds an additional method
