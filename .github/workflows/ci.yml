@@ -22,14 +22,18 @@ jobs:
             cabal: '3.0'
     steps:
     - uses: actions/checkout@v1
+    - name: Install recent cabal/ghc
+      uses: actions/setup-haskell@v1.1
+      with:
+        ghc-version: ${{ matrix.versions.ghc }}
+        cabal-version: ${{ matrix.versions.cabal }}
+
     - name: Install dependencies
       run: |
-          export PATH=/opt/cabal/${{ matrix.versions.cabal }}/bin:/opt/ghc/${{ matrix.versions.ghc }}/bin:$PATH
           cabal v2-update
           cabal v2-build --dependencies-only --enable-tests --enable-benchmarks --disable-optimization -fexecutable all
     - name: Build and test
       run: |
-          export PATH=/opt/cabal/${{ matrix.versions.cabal }}/bin:/opt/ghc/${{ matrix.versions.ghc }}/bin:$PATH
           cabal v2-build --enable-tests --enable-benchmarks --disable-optimization -fexecutable all
           cabal v2-test --disable-optimization all
 
