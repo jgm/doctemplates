@@ -2,7 +2,6 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -10,8 +9,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE DeriveFoldable #-}
-{-# LANGUAGE DeriveFunctor #-}
 
 {- |
    Module      : Text.DocTemplates.Internal
@@ -44,6 +41,7 @@ import Data.YAML (ToYAML(..), FromYAML(..), Node(..), Scalar(..))
 import Control.Monad.Identity
 import qualified Control.Monad.State.Strict as S
 import Data.Char (chr, ord)
+import Data.Maybe (fromMaybe)
 import qualified Data.Text.Read as T
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -166,15 +164,15 @@ instance TemplateTarget a => ToContext a a where
   toVal     = SimpleVal . DL.literal
 
 instance ToContext a a => ToContext a (Doc a) where
-  toVal    = SimpleVal
+  toVal     = SimpleVal
 
 -- This is needed because otherwise the compiler tries to
 -- match on ToContext a [b], with a = b = Char, even though
 -- we don't have ToContext Char Char.  I don't understand why.
-instance {-# OVERLAPS #-} ToContext String String where
+instance {-# OVERLAPPING #-} ToContext String String where
   toVal    = SimpleVal . DL.literal
 
-instance {-# OVERLAPS #-} ToContext String (Doc String) where
+instance {-# OVERLAPPING #-} ToContext String (Doc String) where
   toVal    = SimpleVal
 
 instance ToContext a b => ToContext a [b] where
@@ -188,7 +186,7 @@ instance TemplateTarget a => ToContext a Bool where
   toVal True  = SimpleVal "true"
   toVal False = NullVal
 
-instance (IsString a, TemplateTarget a) => ToContext a Value where
+instance TemplateTarget a => ToContext a Value where
   toContext x = case fromJSON x of
                   Success y -> y
                   Error _   -> mempty
@@ -217,7 +215,7 @@ instance TemplateTarget a => FromContext a a where
 -- This is needed because otherwise the compiler tries to
 -- match on FromContext a [b], with a = b = Char, even though
 -- we don't have FromContext Char Char.  I don't understand why.
-instance {-# OVERLAPS #-} FromContext String String where
+instance {-# OVERLAPPING #-} FromContext String String where
   fromVal (SimpleVal x) = Just (DL.render Nothing x)
   fromVal _             = Nothing
 
@@ -349,7 +347,7 @@ applyPipe ToAlpha val = mapText toAlpha val
 applyPipe ToRoman val = mapText toRoman' val
   where toRoman' t =
          case T.decimal t of
-           Right (y,"") -> maybe t id (toRoman y)
+           Right (y,"") -> fromMaybe t (toRoman y)
            _            -> t
 applyPipe NoWrap val = mapDoc DL.nowrap val
 applyPipe (Block align n border) val =
@@ -448,7 +446,7 @@ updateColumn x = do
 
 renderTemp :: forall a . TemplateTarget a
            => Template a -> Context a -> RenderState (Doc a)
-renderTemp (Literal t) _ = updateColumn $ t
+renderTemp (Literal t) _ = updateColumn t
 renderTemp (Interpolate v) ctx = updateColumn $ mconcat $ resolveVariable v ctx
 renderTemp (Conditional v ift elset) ctx =
   let res = resolveVariable v ctx
