@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE BangPatterns #-}
 {- |
    Module      : Text.DocTemplates.Parser
    Copyright   : Copyright (C) 2009-2019 John MacFarlane
@@ -140,10 +139,9 @@ pEscape = Literal "$" <$ P.try (P.string "$$" <* backupSourcePos 1)
 
 pDirective :: (TemplateTarget a, TemplateMonad m)
            => Parser m (Template a)
-pDirective = do
-  res <- pConditional <|> pForLoop <|> pReflowToggle <|> pNested <|>
-         pInterpolate <|> pBarePartial
-  return res
+pDirective =
+  pConditional <|> pForLoop <|> pReflowToggle <|> pNested <|>
+  pInterpolate <|> pBarePartial
 
 pEnclosed :: Monad m => Parser m a -> Parser m a
 pEnclosed parser = P.try $ do
@@ -227,7 +225,7 @@ pNested = do
           return (y <> z)
   let contents = x <> mconcat xs
   P.updateState $ \st -> st{ nestedCol = oldNested }
-  return $ Nested $ contents
+  return $ Nested contents
 
 pForLoop :: (TemplateTarget a, TemplateMonad m) => Parser m (Template a)
 pForLoop = do
