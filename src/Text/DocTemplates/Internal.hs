@@ -129,7 +129,7 @@ instance Monoid Variable where
   mappend = (<>)
 
 type TemplateTarget a =
-  (Monoid a, IsString a, HasChars a, ToText a, FromText a)
+  (HasChars a, ToText a, FromText a)
 
 -- | A 'Context' defines values for template's variables.
 newtype Context a = Context { unContext :: M.Map Text (Val a) }
@@ -166,17 +166,11 @@ instance TemplateTarget a => ToContext a a where
 instance ToContext a a => ToContext a (Doc a) where
   toVal     = SimpleVal
 
--- This is needed because otherwise the compiler tries to
--- match on ToContext a [b], with a = b = Char, even though
--- we don't have ToContext Char Char.  I don't understand why.
-instance {-# OVERLAPPING #-} ToContext String String where
-  toVal    = SimpleVal . DL.literal
-
-instance {-# OVERLAPPING #-} ToContext String (Doc String) where
-  toVal    = SimpleVal
-
 instance ToContext a b => ToContext a [b] where
   toVal     = ListVal . map toVal
+
+instance {-# OVERLAPPING #-} TemplateTarget [a] => ToContext [a] [a] where
+  toVal    = SimpleVal . DL.literal
 
 instance ToContext a b => ToContext a (M.Map Text b) where
   toVal     = MapVal . toContext
@@ -212,10 +206,7 @@ instance TemplateTarget a => FromContext a a where
   fromVal (SimpleVal x) = Just (DL.render Nothing x)
   fromVal _             = Nothing
 
--- This is needed because otherwise the compiler tries to
--- match on FromContext a [b], with a = b = Char, even though
--- we don't have FromContext Char Char.  I don't understand why.
-instance {-# OVERLAPPING #-} FromContext String String where
+instance {-# OVERLAPPING #-} TemplateTarget [a] => FromContext [a] [a] where
   fromVal (SimpleVal x) = Just (DL.render Nothing x)
   fromVal _             = Nothing
 
@@ -223,7 +214,7 @@ instance FromContext a b => FromContext a [b] where
   fromVal (ListVal  xs) = mapM fromVal xs
   fromVal x             = sequence [fromVal x]
 
-instance (IsString a, TemplateTarget a) => FromJSON (Val a) where
+instance TemplateTarget a => FromJSON (Val a) where
   parseJSON v =
     case v of
       Array vec   -> ListVal <$> mapM parseJSON (V.toList vec)
@@ -237,7 +228,7 @@ instance (IsString a, TemplateTarget a) => FromJSON (Val a) where
                        mapM parseJSON o
       _           -> return NullVal
 
-instance (IsString a, TemplateTarget a) => FromJSON (Context a) where
+instance TemplateTarget a => FromJSON (Context a) where
   parseJSON v = do
     val <- parseJSON v
     case val of
@@ -259,7 +250,7 @@ instance TemplateTarget a => FromYAML (Val a) where
       Scalar _ (SBool True) -> return $ SimpleVal "true"
       _           -> return NullVal
 
-instance (IsString a, TemplateTarget a) => FromYAML (Context a) where
+instance TemplateTarget a => FromYAML (Context a) where
   parseYAML v = do
     val <- parseYAML v
     case val of
