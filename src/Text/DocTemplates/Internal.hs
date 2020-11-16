@@ -223,7 +223,7 @@ instance FromContext a b => FromContext a [b] where
   fromVal (ListVal  xs) = mapM fromVal xs
   fromVal x             = sequence [fromVal x]
 
-instance (IsString a, TemplateTarget a) => FromJSON (Val a) where
+instance TemplateTarget a => FromJSON (Val a) where
   parseJSON v =
     case v of
       Array vec   -> ListVal <$> mapM parseJSON (V.toList vec)
@@ -237,7 +237,7 @@ instance (IsString a, TemplateTarget a) => FromJSON (Val a) where
                        mapM parseJSON o
       _           -> return NullVal
 
-instance (IsString a, TemplateTarget a) => FromJSON (Context a) where
+instance TemplateTarget a => FromJSON (Context a) where
   parseJSON v = do
     val <- parseJSON v
     case val of
@@ -259,7 +259,7 @@ instance TemplateTarget a => FromYAML (Val a) where
       Scalar _ (SBool True) -> return $ SimpleVal "true"
       _           -> return NullVal
 
-instance (IsString a, TemplateTarget a) => FromYAML (Context a) where
+instance TemplateTarget a => FromYAML (Context a) where
   parseYAML v = do
     val <- parseYAML v
     case val of
