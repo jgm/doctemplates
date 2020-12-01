@@ -1,5 +1,26 @@
 # doctemplates
 
+## 0.8.3
+
+  * Properly handle nested loops (#15).  Previously "it" was
+    always used for the variable in a loop, and in a nested loop
+    there was no way to distinguish the value of the inner
+    iteration from the value of the outer one.  Now we assign
+    the iterated value to both "it" and to the original variable
+    name (e.g. "foo.bar").  This probably has a small negative
+    performance impact.  Note that this change also affects
+    the output of the template parser:  original variable
+    names are now retained instead of being replaced by "it".
+
+  * Remove duplicate IsString constraint (#14, Mario Lang).
+
+  * Update haddocks from README (#10).
+
+  * Minor code clean-ups (#7, favonia).
+
+  * Add hsyaml >= 0.2 constraint (#6).
+
+
 ## 0.8.2
 
   * Add filters: first, rest, last, allbutlast.
