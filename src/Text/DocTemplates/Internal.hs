@@ -422,14 +422,23 @@ removeFinalNl x                 = x
 withVariable :: (Monad m, TemplateTarget a)
              => Variable -> Context a -> (Context a -> m (Doc a))
              -> m [Doc a]
-withVariable  v ctx f =
-  case applyPipes (varPipes v) $ multiLookup (varParts v) (MapVal ctx) of
+withVariable var ctx f =
+  case applyPipes (varPipes var) $ multiLookup (varParts var) (MapVal ctx) of
     NullVal     -> return mempty
-    ListVal xs  -> mapM (\iterval -> f $
-                    Context $ M.insert "it" iterval $ unContext ctx) xs
-    MapVal ctx' -> (:[]) <$> f
-                    (Context $ M.insert "it" (MapVal ctx') $ unContext ctx)
-    val' -> (:[]) <$> f (Context $ M.insert "it" val' $ unContext ctx)
+    ListVal xs  -> mapM (\iterval -> f $ setVarVal iterval) xs
+    MapVal ctx' -> (:[]) <$> f (setVarVal (MapVal ctx'))
+    val' -> (:[]) <$> f (setVarVal val')
+ where
+  setVarVal x =
+    addToContext var x $ Context $ M.insert "it" x $ unContext ctx
+  addToContext (Variable [] _) _ (Context ctx') = Context ctx'
+  addToContext (Variable (v:vs) fs) x (Context ctx') =
+    Context $ M.adjust
+              (\z -> case z of
+                       _ | null vs -> x
+                       MapVal m    ->
+                         MapVal $ addToContext (Variable vs fs) x m
+                       _ -> z) v ctx'
 
 type RenderState = S.State Int
 
