@@ -141,6 +141,7 @@ data Val a =
     SimpleVal  (Doc a)
   | ListVal    [Val a]
   | MapVal     (Context a)
+  | BoolVal    Bool
   | NullVal
   deriving (Show, Traversable, Foldable, Functor, Data, Typeable)
 
@@ -183,8 +184,8 @@ instance ToContext a b => ToContext a (M.Map Text b) where
   toContext = Context . M.map toVal
 
 instance TemplateTarget a => ToContext a Bool where
-  toVal True  = SimpleVal "true"
-  toVal False = NullVal
+  toVal True  = BoolVal True
+  toVal False = BoolVal False
 
 instance TemplateTarget a => ToContext a Value where
   toContext x = case fromJSON x of
@@ -232,7 +233,7 @@ instance TemplateTarget a => FromJSON (Val a) where
                               case floatingOrInteger n of
                                   Left (r :: Double)   -> show r
                                   Right (i :: Integer) -> show i
-      Bool True   -> return $ SimpleVal "true"
+      Bool b      -> return $ BoolVal b
       Object o    -> MapVal . Context . M.fromList . H.toList <$>
                        mapM parseJSON o
       _           -> return NullVal
@@ -256,7 +257,7 @@ instance TemplateTarget a => FromYAML (Val a) where
       Scalar _ (SStr t) -> return $ SimpleVal $ fromString . fromText $ t
       Scalar _ (SFloat n) -> return $ SimpleVal $ fromString . show $ n
       Scalar _ (SInt n) -> return $ SimpleVal $ fromString . show $ n
-      Scalar _ (SBool True) -> return $ SimpleVal "true"
+      Scalar _ (SBool b) -> return $ BoolVal b
       _           -> return NullVal
 
 instance TemplateTarget a => FromYAML (Context a) where
@@ -274,6 +275,7 @@ instance TemplateTarget a => ToJSON (Val a) where
   toJSON (MapVal m) = toJSON m
   toJSON (ListVal xs) = toJSON xs
   toJSON (SimpleVal d) = toJSON $ toText $ DL.render Nothing d
+  toJSON (BoolVal b) = toJSON b
 
 instance TemplateTarget a => ToYAML (Context a) where
   toYAML (Context m) = toYAML m
@@ -283,6 +285,7 @@ instance TemplateTarget a => ToYAML (Val a) where
   toYAML (MapVal m) = toYAML m
   toYAML (ListVal xs) = toYAML xs
   toYAML (SimpleVal d) = toYAML $ toText $ DL.render Nothing d
+  toYAML (BoolVal b) = toYAML b
 
 mapDoc :: TemplateTarget a => (Doc a -> Doc a) -> Val a -> Val a
 mapDoc f val =
@@ -290,6 +293,7 @@ mapDoc f val =
     SimpleVal d        -> SimpleVal (f d)
     MapVal (Context m) -> MapVal (Context $ M.map (mapDoc f) m)
     ListVal xs         -> ListVal $ map (mapDoc f) xs
+    BoolVal b          -> BoolVal b
     NullVal            -> NullVal
 
 mapText :: TemplateTarget a => (Text -> Text) -> Val a -> Val a
@@ -303,6 +307,7 @@ applyPipe ToLength val = SimpleVal $ fromString . show $ len
            SimpleVal d        -> T.length . toText $ DL.render Nothing d
            MapVal (Context m) -> M.size m
            ListVal xs         -> length xs
+           BoolVal _          -> 0
            NullVal            -> 0
 applyPipe ToUppercase val = mapText T.toUpper val
 applyPipe ToLowercase val = mapText T.toLower val
@@ -411,6 +416,8 @@ resolveVariable' v val =
       | DL.isEmpty d -> []
       | otherwise    -> [removeFinalNl d]
     MapVal _      -> ["true"]
+    BoolVal True  -> ["true"]
+    BoolVal False -> []
     NullVal       -> []
 
 removeFinalNl :: Doc a -> Doc a
@@ -456,12 +463,12 @@ updateColumn x = do
 renderTemp :: forall a . TemplateTarget a
            => Template a -> Context a -> RenderState (Doc a)
 renderTemp (Literal t) _ = updateColumn t
-renderTemp (Interpolate v) ctx = updateColumn $ mconcat $ resolveVariable v ctx
+renderTemp (Interpolate v) ctx =
+  updateColumn $ mconcat $ resolveVariable v ctx
 renderTemp (Conditional v ift elset) ctx =
-  let res = resolveVariable v ctx
-   in case res of
-        [] -> renderTemp elset ctx
-        _  -> renderTemp ift ctx
+  case resolveVariable v ctx of
+    [] -> renderTemp elset ctx
+    _  -> renderTemp ift ctx
 renderTemp (Iterate v t sep) ctx = do
   xs <- withVariable v ctx (renderTemp t)
   sep' <- renderTemp sep ctx

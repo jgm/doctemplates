@@ -107,6 +107,8 @@ of the object that is the value of the `employee` field.
   rendered verbatim.  (Note that no escaping is done;
   the assumption is that the calling program will escape
   the strings appropriately for the output format.)
+- If the value of the variable is a boolean value, it
+  will be rendered as `true` if true, or as empty if false.
 - If the value is a list, the values will be concatenated.
 - If the value is a map, the string `true` will be rendered.
 - Every other value will be rendered as the empty string.
@@ -116,8 +118,6 @@ the following conversions are done:
 
 - If the value is a number, it will be rendered as an
   integer if possible, otherwise as a floating-point number.
-- If the value is a JSON boolean, it will be rendered as `true`
-  if true, and as the empty string if false.
 
 
 ## Conditionals
