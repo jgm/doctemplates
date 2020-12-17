@@ -1,5 +1,17 @@
 # doctemplates
 
+## 0.9
+
+  * Add BoolVal constructor to Val.  This gives a smoother
+    interface with JSON and YAML.  [API change]
+
+  * Remove overlapping instances by generalizing
+    `ToContext String String` and `FromContext String String`
+    to `TemplateTarget [a] => ToContext [a] [a]` and
+    `TemplateTarget [a] => FromContext [a] [a]`.
+    Remove the instance `ToContext String (Doc String)`.
+    Remove redundant constraints.  (#9, favonia) [API change]
+
 ## 0.8.3
 
   * Properly handle nested loops (#15).  Previously "it" was
