@@ -104,6 +104,8 @@ value of the @salary@ field of the object that is the value of the
     verbatim. (Note that no escaping is done; the assumption is that the
     calling program will escape the strings appropriately for the output
     format.)
+-   If the value of the variable is a boolean value, it will be rendered
+    as @true@ if true, or as empty if false.
 -   If the value is a list, the values will be concatenated.
 -   If the value is a map, the string @true@ will be rendered.
 -   Every other value will be rendered as the empty string.
@@ -113,17 +115,21 @@ conversions are done:
 
 -   If the value is a number, it will be rendered as an integer if
     possible, otherwise as a floating-point number.
--   If the value is a JSON boolean, it will be rendered as @true@ if
-    true, and as the empty string if false.
 
 == Conditionals
 
 A conditional begins with @if(variable)@ (enclosed in matched
 delimiters) and ends with @endif@ (enclosed in matched delimiters). It
 may optionally contain an @else@ (enclosed in matched delimiters). The
-@if@ section is used if @variable@ has a non-empty value, otherwise the
-@else@ section is used (if present). (Note that even the string @false@
-counts as a true value.) Examples:
+@if@ section is used if @variable@ has a true value, otherwise the
+@else@ section is used (if present). The following values count as true:
+
+-   any map
+-   any array containing at least one true value
+-   any nonempty string (even @false@)
+-   boolean True
+
+Examples:
 
 > $if(foo)$bar$endif$
 >

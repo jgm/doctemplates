@@ -8,6 +8,6 @@ $if(foo)$XXX$else$YYY$endif$
 $if(bar)$XXX$else$YYY$endif$
 .
 true
-
+false
 XXX
 YYY

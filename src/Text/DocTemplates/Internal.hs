@@ -396,20 +396,34 @@ multiLookup (t:vs) (MapVal (Context o)) =
     Just v' -> multiLookup vs v'
 multiLookup _ _ = NullVal
 
-resolveVariable :: TemplateTarget a => Variable -> Context a -> [Doc a]
+-- The Bool indicates whether it's a true or false value.
+data Resolved a = Resolved Bool [Doc a]
+   deriving (Show, Read, Data, Typeable, Generic, Eq, Ord,
+             Foldable, Traversable, Functor)
+
+instance Semigroup (Resolved a) where
+  Resolved b1 x1 <> Resolved b2 x2 = Resolved (b1 || b2) (x1 <> x2)
+
+instance Monoid (Resolved a) where
+  mappend = (<>)
+  mempty = Resolved False []
+
+resolveVariable :: TemplateTarget a
+                => Variable -> Context a -> Resolved a
 resolveVariable v ctx = resolveVariable' v (MapVal ctx)
 
-resolveVariable' :: TemplateTarget a => Variable -> Val a -> [Doc a]
+resolveVariable' :: TemplateTarget a
+                 => Variable -> Val a -> Resolved a
 resolveVariable' v val =
   case applyPipes (varPipes v) $ multiLookup (varParts v) val of
-    ListVal xs    -> concatMap (resolveVariable' mempty) xs
+    ListVal xs    -> mconcat $ map (resolveVariable' mempty) xs
     SimpleVal d
-      | DL.isEmpty d -> []
-      | otherwise    -> [removeFinalNl d]
-    MapVal _      -> ["true"]
-    BoolVal True  -> ["true"]
-    BoolVal False -> []
-    NullVal       -> []
+      | DL.isEmpty d -> Resolved False []
+      | otherwise    -> Resolved True [removeFinalNl d]
+    MapVal _      -> Resolved True ["true"]
+    BoolVal True  -> Resolved True ["true"]
+    BoolVal False -> Resolved False ["false"]
+    NullVal       -> Resolved False []
 
 removeFinalNl :: Doc a -> Doc a
 removeFinalNl DL.NewLine        = mempty
@@ -455,11 +469,12 @@ renderTemp :: forall a . TemplateTarget a
            => Template a -> Context a -> RenderState (Doc a)
 renderTemp (Literal t) _ = updateColumn t
 renderTemp (Interpolate v) ctx =
-  updateColumn $ mconcat $ resolveVariable v ctx
+  case resolveVariable v ctx of
+    Resolved _ xs -> updateColumn (mconcat xs)
 renderTemp (Conditional v ift elset) ctx =
   case resolveVariable v ctx of
-    [] -> renderTemp elset ctx
-    _  -> renderTemp ift ctx
+    Resolved False _ -> renderTemp elset ctx
+    Resolved True _  -> renderTemp ift ctx
 renderTemp (Iterate v t sep) ctx = do
   xs <- withVariable v ctx (renderTemp t)
   sep' <- renderTemp sep ctx

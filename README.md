@@ -126,9 +126,16 @@ A conditional begins with `if(variable)` (enclosed in
 matched delimiters) and ends with `endif` (enclosed in matched
 delimiters).  It may optionally contain an `else` (enclosed in
 matched delimiters).  The `if` section is used if
-`variable` has a non-empty value, otherwise the `else`
-section is used (if present).  (Note that even the
-string `false` counts as a true value.) Examples:
+`variable` has a true value, otherwise the `else`
+section is used (if present).  The following values
+count as true:
+
+- any map
+- any array containing at least one true value
+- any nonempty string (even `false`)
+- boolean True
+
+Examples:
 
 ```
 $if(foo)$bar$endif$
