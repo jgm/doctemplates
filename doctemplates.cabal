@@ -1,5 +1,5 @@
 name:                doctemplates
-version:             0.9
+version:             0.10
 synopsis:            Pandoc-style document templates
 description:         This is the text templating system used by pandoc.
                      It supports variable interpolation, iteration,

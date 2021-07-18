@@ -1,5 +1,18 @@
 # doctemplates
 
+## 0.10
+
+  * Change rendering and conditional behavior with booleans.
+    Previously, `$if(foo)$` evaluated to false iff `foo`
+    would render as the empty string. This forced us to render
+    a boolean False value as an empty string, rather than `false`.
+    And this has caused various problems with templates
+    (#16, jgm/pandoc#7402).  Now, boolean False values render as
+    `false` -- just as True values render as `true`.  And conditionals
+    are now sensitive to booleans, so `$if(foo)$` evaluates to false
+    when `foo` is a boolean False value, even though it would render
+    as the nonempty string `false`.
+
 ## 0.9
 
   * Add BoolVal constructor to Val.  This gives a smoother
