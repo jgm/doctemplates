@@ -1,5 +1,10 @@
 # doctemplates
 
+## 0.10.0.1
+
+  * Don't rely on aeson Object being implemented as a HashMap.
+    This change is needed for doctemplates to compile against aeson 2.0.0.0.
+
 ## 0.10
 
   * Change rendering and conditional behavior with booleans.
