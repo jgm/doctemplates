@@ -27,7 +27,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Install recent cabal/ghc
-      uses: actions/setup-haskell@v1.1.3
+      uses: haskell/actions/setup@v1
       with:
         ghc-version: ${{ matrix.versions.ghc }}
         cabal-version: ${{ matrix.versions.cabal }}
