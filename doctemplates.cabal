@@ -40,7 +40,6 @@ library
                        filepath,
                        parsec,
                        mtl,
-                       unordered-containers,
                        scientific
   if !impl(ghc >= 8.0)
     build-depends:     semigroups == 0.18.*

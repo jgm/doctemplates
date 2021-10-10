@@ -53,7 +53,6 @@ import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Data.Text (Text)
 import qualified Data.Map as M
-import qualified Data.HashMap.Strict as H
 import qualified Data.Vector as V
 import Data.Scientific (floatingOrInteger)
 import Data.List (intersperse)
@@ -225,8 +224,7 @@ instance TemplateTarget a => FromJSON (Val a) where
                                   Left (r :: Double)   -> show r
                                   Right (i :: Integer) -> show i
       Bool b      -> return $ BoolVal b
-      Object o    -> MapVal . Context . M.fromList . H.toList <$>
-                       mapM parseJSON o
+      Object _    -> MapVal . Context <$> parseJSON v
       _           -> return NullVal
 
 instance TemplateTarget a => FromJSON (Context a) where
