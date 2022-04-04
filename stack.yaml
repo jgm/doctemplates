@@ -1,6 +1,8 @@
 resolver: lts-18.10
 packages:
 - '.'
-extra-deps: []
+extra-deps:
+- doclayout-0.4
+- emojis-0.1.2
 flags: {}
 extra-package-dbs: []
