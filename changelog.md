@@ -1,5 +1,9 @@
 # doctemplates
 
+## 0.10.0.2
+
+  * Use doclayout 0.4.
+
 ## 0.10.0.1
 
   * Don't rely on aeson Object being implemented as a HashMap.
