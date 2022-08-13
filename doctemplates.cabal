@@ -73,7 +73,7 @@ benchmark doctemplates-bench
   Build-Depends:   doctemplates,
                    doclayout >= 0.4 && < 0.5,
                    base >= 4.8 && < 5,
-                   criterion >= 1.0 && < 1.6,
+                   criterion >= 1.0,
                    filepath,
                    aeson,
                    text,
