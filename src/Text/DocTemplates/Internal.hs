@@ -37,7 +37,6 @@ module Text.DocTemplates.Internal
 
 import Data.Text.Conversions (FromText(..), ToText(..))
 import Data.Aeson (Value(..), ToJSON(..), FromJSON(..), Result(..), fromJSON)
-import Data.YAML (ToYAML(..), FromYAML(..), Node(..), Scalar(..))
 import Control.Monad.Identity
 import qualified Control.Monad.State.Strict as S
 import Data.Char (chr, ord)
@@ -234,28 +233,6 @@ instance TemplateTarget a => FromJSON (Context a) where
       MapVal o -> return o
       _        -> fail "Expecting MapVal"
 
-instance TemplateTarget a => FromYAML (Val a) where
-  parseYAML v =
-    case v of
-      Mapping _ _ m -> MapVal . Context . M.fromList <$>
-                           mapM (\(key, val) -> do
-                                  val' <- parseYAML val
-                                  key' <- parseYAML key
-                                  return (key', val')) (M.toList m)
-      Sequence _ _ xs -> ListVal <$> mapM parseYAML xs
-      Scalar _ (SStr t) -> return $ SimpleVal $ fromString . fromText $ t
-      Scalar _ (SFloat n) -> return $ SimpleVal $ fromString . show $ n
-      Scalar _ (SInt n) -> return $ SimpleVal $ fromString . show $ n
-      Scalar _ (SBool b) -> return $ BoolVal b
-      _           -> return NullVal
-
-instance TemplateTarget a => FromYAML (Context a) where
-  parseYAML v = do
-    val <- parseYAML v
-    case val of
-      MapVal o -> return o
-      _        -> fail "Expecting MapVal"
-
 instance TemplateTarget a => ToJSON (Context a) where
   toJSON (Context m) = toJSON m
 
@@ -265,16 +242,6 @@ instance TemplateTarget a => ToJSON (Val a) where
   toJSON (ListVal xs) = toJSON xs
   toJSON (SimpleVal d) = toJSON $ toText $ DL.render Nothing d
   toJSON (BoolVal b) = toJSON b
-
-instance TemplateTarget a => ToYAML (Context a) where
-  toYAML (Context m) = toYAML m
-
-instance TemplateTarget a => ToYAML (Val a) where
-  toYAML NullVal = toYAML (Nothing :: Maybe Text)
-  toYAML (MapVal m) = toYAML m
-  toYAML (ListVal xs) = toYAML xs
-  toYAML (SimpleVal d) = toYAML $ toText $ DL.render Nothing d
-  toYAML (BoolVal b) = toYAML b
 
 mapDoc :: TemplateTarget a => (Doc a -> Doc a) -> Val a -> Val a
 mapDoc f val =

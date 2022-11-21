@@ -1,4 +1,4 @@
-# doctemplates
+#( doctemplates
 
 [![CI
 tests](https://github.com/jgm/doctemplates/workflows/CI%20tests/badge.svg)](https://github.com/jgm/doctemplates/actions)
