@@ -406,6 +406,7 @@ Currently the following pipes are predefined:
 
 module Text.DocTemplates ( renderTemplate
                          , renderTemplateM
+                         , MissingRequired(..)
                          , compileTemplate
                          , compileTemplateFile
                          , applyTemplate
@@ -425,7 +426,8 @@ import Data.Text (Text)
 import Text.DocTemplates.Parser (compileTemplate)
 import Text.DocTemplates.Internal ( TemplateMonad(..), Context(..),
             Val(..), ToContext(..), FromContext(..), TemplateTarget,
-            Template, renderTemplate, renderTemplateM )
+            Template, renderTemplate, renderTemplateM,
+            MissingRequired(..) )
 
 -- | Compile a template from a file.  IO errors will be
 -- raised as exceptions; template parsing errors result in

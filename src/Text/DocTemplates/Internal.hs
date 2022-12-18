@@ -23,6 +23,7 @@
 module Text.DocTemplates.Internal
       ( renderTemplate
       , renderTemplateM
+      , MissingRequired(..)
       , TemplateMonad(..)
       , Context(..)
       , Val(..)
