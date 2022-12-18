@@ -386,8 +386,8 @@ instance MissingRequired m => MissingRequired (RenderStateM m) where
 instance MissingRequired Identity where
   missingRequired = const $ pure $ Resolved False []
 
-instance MissingRequired (Either String) where
-  missingRequired v = Left $ T.unpack msg
+instance MissingRequired (Either Text) where
+  missingRequired v = Left msg
     where
       msg = "The variable '" <> name <> "' could not be found in the context."
       name = T.intercalate "." $ varParts v
