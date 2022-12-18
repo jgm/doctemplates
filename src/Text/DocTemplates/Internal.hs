@@ -389,7 +389,7 @@ instance MissingRequired Identity where
 instance MissingRequired (Either Text) where
   missingRequired v = Left msg
     where
-      msg = "The variable '" <> name <> "' could not be found in the context."
+      msg = "The required variable '" <> name <> "' could not be found in the context."
       name = T.intercalate "." $ varParts v
 
 resolveVariable :: (TemplateTarget a, MissingRequired m)
