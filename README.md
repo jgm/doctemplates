@@ -1,4 +1,4 @@
-#( doctemplates
+# doctemplates
 
 [![CI
 tests](https://github.com/jgm/doctemplates/workflows/CI%20tests/badge.svg)](https://github.com/jgm/doctemplates/actions)
@@ -194,7 +194,7 @@ $endif$
 
 A for loop begins with `for(variable)` (enclosed in
 matched delimiters) and ends with `endfor` (enclosed in matched
-delimiters.
+delimiters).
 
 - If `variable` is an array, the material inside the loop will
   be evaluated repeatedly, with `variable` being set to each
