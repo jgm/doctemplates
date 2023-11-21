@@ -408,6 +408,7 @@ module Text.DocTemplates ( renderTemplate
                          , renderTemplateWithCustomPipes
                          , compileTemplate
                          , compileTemplateFile
+                         , compileTemplateWithCustomPipes
                          , applyTemplate
                          , TemplateMonad(..)
                          , TemplateTarget
@@ -422,7 +423,7 @@ module Text.DocTemplates ( renderTemplate
 import qualified Data.Text.IO as TIO
 import Text.DocLayout (Doc(..))
 import Data.Text (Text)
-import Text.DocTemplates.Parser (compileTemplate)
+import Text.DocTemplates.Parser (compileTemplate, compileTemplateWithCustomPipes)
 import Text.DocTemplates.Internal ( TemplateMonad(..), Context(..),
             Val(..), ToContext(..), FromContext(..), TemplateTarget,
             Template, renderTemplate, renderTemplateWithCustomPipes )

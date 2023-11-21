@@ -18,6 +18,7 @@ import System.FilePath.Glob
 import qualified Data.ByteString.Lazy as BL
 import Data.Semigroup ((<>))
 import Data.Maybe
+import Data.Functor.Identity
 
 main :: IO ()
 main = withTempDirectory "test" "out." $ \tmpdir -> do
@@ -81,16 +82,33 @@ unitTests = [
                   Left e  -> T.pack e
       res @?= "hello this is a test of the wrapping\nhello this\nis a test\nof the\nwrapping"
   , testCase "custom pipe" $ do
+      let cps = [("totitle", (return . T.toTitle :: T.Text -> Identity T.Text))]
       (templ :: Either String (Template T.Text)) <-
-        compileTemplate "foo" "$foo/totitle$"
+        compileTemplateWithCustomPipes "foo" "$foo/totitle$" cps
       let res :: T.Text
           res = case templ of
                   Right t -> render Nothing
-                   (renderTemplateWithCustomPipes t (Context $ M.insert "foo"
+                   (runIdentity $ renderTemplateWithCustomPipes t (Context $ M.insert "foo"
                      (SimpleVal $
                        DL.hsep ["hello", "this", "is", "a", "test"]
-                       :: Val T.Text) mempty) [("totitle", T.toTitle)])
+                       :: Val T.Text) mempty) cps)
                   Left e  -> T.pack e
+      res @?= "Hello This Is A Test"
+  , testCase "monadic custom pipe" $ do
+      let cps = [("totitle", (return . T.toTitle :: T.Text -> IO T.Text))]
+      (templ :: Either String (Template T.Text)) <-
+        compileTemplateWithCustomPipes "foo" "$foo/totitle$" cps
+      let io :: IO T.Text
+          io = case templ of
+                 Right t -> do
+                   doc <- renderTemplateWithCustomPipes t
+                            (Context $ M.insert "foo"
+                              (SimpleVal $
+                                DL.hsep ["hello", "this", "is", "a", "test"]
+                                :: Val T.Text) mempty) cps
+                   return (render Nothing doc)
+                 Left e  -> return $ T.pack e
+      res <- io
       res @?= "Hello This Is A Test"
   ]
 

@@ -34,6 +34,7 @@ module Text.DocTemplates.Internal
       , Pipe(..)
       , Alignment(..)
       , Border(..)
+      , CustomPipes
       ) where
 
 import Data.Text.Conversions (FromText(..), ToText(..))
@@ -258,8 +259,11 @@ mapText :: TemplateTarget a => (Text -> Text) -> Val a -> Val a
 mapText f val =
   runIdentity (traverse (return . fromText . f . toText) val)
 
-applyPipe :: TemplateTarget a => Pipe -> CustomPipes -> Val a -> Val a
-applyPipe ToLength cps val = SimpleVal $ fromString . show $ len
+mapMText :: (TemplateTarget a, Monad m) => (Text -> m Text) -> Val a -> m (Val a)
+mapMText f val = traverse (fmap fromText . f . toText) val
+
+applyPipe :: (TemplateTarget a, Monad m) => Pipe -> CustomPipes m -> Val a -> m (Val a)
+applyPipe ToLength _cps val = return $ SimpleVal $ fromString . show $ len
   where
    len = case val of
            SimpleVal d        -> T.length . toText $ DL.render Nothing d
@@ -267,10 +271,10 @@ applyPipe ToLength cps val = SimpleVal $ fromString . show $ len
            ListVal xs         -> length xs
            BoolVal _          -> 0
            NullVal            -> 0
-applyPipe ToUppercase cps val = mapText T.toUpper val
-applyPipe ToLowercase cps val = mapText T.toLower val
-applyPipe ToPairs cps val =
-  case val of
+applyPipe ToUppercase _cps val = return $ mapText T.toUpper val
+applyPipe ToLowercase _cps val = return $ mapText T.toLower val
+applyPipe ToPairs _cps val =
+  return $ case val of
     MapVal (Context m) ->
       ListVal $ map toPair $ M.toList m
     ListVal xs         ->
@@ -280,40 +284,40 @@ applyPipe ToPairs cps val =
   toPair (k, v) = MapVal $ Context $ M.fromList
                     [ ("key", SimpleVal $ fromString . T.unpack $ k)
                     , ("value", v) ]
-applyPipe FirstItem cps val =
-  case val of
+applyPipe FirstItem _cps val =
+  return $ case val of
     ListVal (x:_) -> x
     _             -> val
-applyPipe LastItem cps val =
-  case val of
+applyPipe LastItem _cps val =
+  return $ case val of
     ListVal xs@(_:_) -> last xs
     _                -> val
-applyPipe Rest cps val =
-  case val of
+applyPipe Rest _cps val =
+  return $ case val of
     ListVal (_:xs) -> ListVal xs
     _              -> val
-applyPipe AllButLast cps val =
-  case val of
+applyPipe AllButLast _cps val =
+  return $ case val of
     ListVal xs@(_:_) -> ListVal (init xs)
     _                -> val
-applyPipe Reverse cps val =
-  case val of
+applyPipe Reverse _cps val =
+  return $ case val of
     ListVal xs  -> ListVal (reverse xs)
     SimpleVal{} -> mapText T.reverse val
     _           -> val
-applyPipe Chomp cps val = mapDoc DL.chomp val
-applyPipe ToAlpha cps val = mapText toAlpha val
+applyPipe Chomp _cps val = return $ mapDoc DL.chomp val
+applyPipe ToAlpha _cps val = return $ mapText toAlpha val
   where toAlpha t =
           case T.decimal t of
             Right (y,"") -> fromString [chr (ord 'a' + (y `mod` 26) - 1)]
             _            -> t
-applyPipe ToRoman cps val = mapText toRoman' val
+applyPipe ToRoman _cps val = return $ mapText toRoman' val
   where toRoman' t =
          case T.decimal t of
            Right (y,"") -> fromMaybe t (toRoman y)
            _            -> t
-applyPipe NoWrap cps val = mapDoc DL.nowrap val
-applyPipe (Block align n border) cps val =
+applyPipe NoWrap _cps val = return $ mapDoc DL.nowrap val
+applyPipe (Block align n border) _cps val =
   let constructor = case align of
                       LeftAligned  -> DL.lblock
                       Centered     -> DL.cblock
@@ -321,15 +325,15 @@ applyPipe (Block align n border) cps val =
       toBorder y = if T.null y
                       then mempty
                       else DL.vfill (fromText y)
-  in case nullToSimple val of
+  in return $ case nullToSimple val of
        SimpleVal d -> SimpleVal $
                         toBorder (borderLeft border) <>
                         constructor n d <>
                         toBorder (borderRight border)
        _           -> val
 applyPipe (Custom pipe) cps val = case lookup pipe cps of
-  Just f -> mapText f val
-  Nothing -> val
+  Just f -> mapMText f val
+  Nothing -> return val
 
 nullToSimple :: Monoid a => Val a -> Val a
 nullToSimple NullVal = SimpleVal mempty
@@ -355,8 +359,8 @@ toRoman x
   | x == 0    = return ""
   | otherwise = Nothing
 
-applyPipes :: TemplateTarget a => [Pipe] -> CustomPipes -> Val a -> Val a
-applyPipes fs cps x = foldr (flip applyPipe cps) x $ reverse fs
+applyPipes :: (Monad m, TemplateTarget a) => [Pipe] -> CustomPipes m -> Val a -> m (Val a)
+applyPipes fs cps x = foldM (\ih f -> applyPipe f cps ih) x $ reverse fs
 
 multiLookup :: TemplateTarget a => [Text] -> Val a -> Val a
 multiLookup [] x = x
@@ -378,22 +382,23 @@ instance Monoid (Resolved a) where
   mappend = (<>)
   mempty = Resolved False []
 
-resolveVariable :: TemplateTarget a
-                => Variable -> Context a -> CustomPipes -> Resolved a
+resolveVariable :: (TemplateTarget a, Monad m)
+                => Variable -> Context a -> CustomPipes m -> m (Resolved a)
 resolveVariable v ctx cps = resolveVariable' v (MapVal ctx) cps
 
-resolveVariable' :: TemplateTarget a
-                 => Variable -> Val a -> CustomPipes -> Resolved a
-resolveVariable' v val cps =
-  case applyPipes (varPipes v) cps $ multiLookup (varParts v) val of
-    ListVal xs    -> mconcat $ map (\val -> resolveVariable' mempty val cps) xs
+resolveVariable' :: (TemplateTarget a, Monad m)
+                 => Variable -> Val a -> CustomPipes m -> m (Resolved a)
+resolveVariable' v val cps = do
+  val' <- applyPipes (varPipes v) cps $ multiLookup (varParts v) val
+  case val' of
+    ListVal xs    -> mconcat <$> mapM (\val0 -> resolveVariable' mempty val0 cps) xs
     SimpleVal d
-      | DL.isEmpty d -> Resolved False []
-      | otherwise    -> Resolved True [removeFinalNl d]
-    MapVal _      -> Resolved True ["true"]
-    BoolVal True  -> Resolved True ["true"]
-    BoolVal False -> Resolved False ["false"]
-    NullVal       -> Resolved False []
+      | DL.isEmpty d -> return $ Resolved False []
+      | otherwise    -> return $ Resolved True [removeFinalNl d]
+    MapVal _      -> return $ Resolved True ["true"]
+    BoolVal True  -> return $ Resolved True ["true"]
+    BoolVal False -> return $ Resolved False ["false"]
+    NullVal       -> return $ Resolved False []
 
 removeFinalNl :: Doc a -> Doc a
 removeFinalNl DL.NewLine        = mempty
@@ -402,14 +407,15 @@ removeFinalNl (DL.Concat d1 d2) = d1 <> removeFinalNl d2
 removeFinalNl x                 = x
 
 withVariable :: (Monad m, TemplateTarget a)
-             => Variable -> Context a -> (Context a -> m (Doc a)) -> CustomPipes
-             -> m [Doc a]
-withVariable var ctx f cps =
-  case applyPipes (varPipes var) cps $ multiLookup (varParts var) (MapVal ctx) of
+             => Variable -> Context a -> (Context a -> RenderState m (Doc a)) -> CustomPipes m
+             -> RenderState m [Doc a]
+withVariable var ctx f cps = do
+  val' <- S.lift (applyPipes (varPipes var) cps $ multiLookup (varParts var) (MapVal ctx))
+  case val' of
     NullVal     -> return mempty
     ListVal xs  -> mapM (\iterval -> f $ setVarVal iterval) xs
     MapVal ctx' -> (:[]) <$> f (setVarVal (MapVal ctx'))
-    val' -> (:[]) <$> f (setVarVal val')
+    _val' -> (:[]) <$> f (setVarVal val')
  where
   setVarVal x =
     addToContext var x $ Context $ M.insert "it" x $ unContext ctx
@@ -422,37 +428,39 @@ withVariable var ctx f cps =
                          MapVal $ addToContext (Variable vs fs) x m
                        _ -> z) v ctx'
 
-type RenderState = S.State Int
+type RenderState m = S.StateT Int m
 
 -- | Render a compiled template in a "context" which provides
 -- values for the template's variables.
 renderTemplate :: (TemplateTarget a, ToContext a b)
                => Template a -> b -> Doc a
-renderTemplate t x = renderTemplateWithCustomPipes t x []
+renderTemplate t x = runIdentity (renderTemplateWithCustomPipes t x [])
 
-type CustomPipes = [(String, Text -> Text)]
+type CustomPipes m = [(String, Text -> m Text)]
 
-renderTemplateWithCustomPipes :: (TemplateTarget a, ToContext a b)
-                              => Template a -> b -> CustomPipes -> Doc a
-renderTemplateWithCustomPipes t x cps = S.evalState (renderTemp t (toContext x) cps) 0
+renderTemplateWithCustomPipes :: (TemplateTarget a, ToContext a b, Monad m)
+                              => Template a -> b -> CustomPipes m -> m (Doc a)
+renderTemplateWithCustomPipes t x cps = S.evalStateT (renderTemp t (toContext x) cps) 0
 
-updateColumn :: TemplateTarget a => Doc a -> RenderState (Doc a)
+updateColumn :: (TemplateTarget a, Monad m) => Doc a -> RenderState m (Doc a)
 updateColumn x = do
   S.modify $ DL.updateColumn x
   return x
 
-renderTemp :: forall a . TemplateTarget a
-           => Template a -> Context a -> CustomPipes -> RenderState (Doc a)
+renderTemp :: forall a m. (TemplateTarget a, Monad m)
+           => Template a -> Context a -> CustomPipes m -> RenderState m (Doc a)
 renderTemp (Literal t) _ _ = updateColumn t
-renderTemp (Interpolate v) ctx cps =
-  case resolveVariable v ctx cps of
+renderTemp (Interpolate v) ctx cps = do
+  res <- S.lift (resolveVariable v ctx cps)
+  case res of
     Resolved _ xs -> updateColumn (mconcat xs)
-renderTemp (Conditional v ift elset) ctx cps =
-  case resolveVariable v ctx cps of
+renderTemp (Conditional v ift elset) ctx cps = do
+  res <- S.lift (resolveVariable v ctx cps)
+  case res of
     Resolved False _ -> renderTemp elset ctx cps
     Resolved True _  -> renderTemp ift ctx cps
 renderTemp (Iterate v t sep) ctx cps = do
-  xs <- withVariable v ctx (\ctx -> renderTemp t ctx cps) cps
+  xs <- withVariable v ctx (\ctx0 -> renderTemp t ctx0 cps) cps
   sep' <- renderTemp sep ctx cps
   return . mconcat . intersperse sep' $ xs
 renderTemp (Nested t) ctx cps = do
@@ -460,7 +468,8 @@ renderTemp (Nested t) ctx cps = do
   DL.nest n <$> renderTemp t ctx cps
 renderTemp (Partial fs t) ctx cps = do
     val' <- renderTemp t ctx cps
-    return $ case applyPipes fs cps (SimpleVal val') of
+    val'' <- S.lift (applyPipes fs cps (SimpleVal val'))
+    return $ case val'' of
       SimpleVal x -> x
       _           -> mempty
 renderTemp (Concat t1 t2) ctx cps =

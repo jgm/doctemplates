@@ -11,7 +11,8 @@
 -}
 
 module Text.DocTemplates.Parser
-    ( compileTemplate ) where
+    ( compileTemplate
+    , compileTemplateWithCustomPipes ) where
 
 import Data.Char (isAlphaNum)
 import Control.Monad (guard, when)
@@ -36,7 +37,12 @@ import Data.Semigroup ((<>), Semigroup)
 -- and may be left empty if partials are not used.
 compileTemplate :: (TemplateMonad m, TemplateTarget a)
                 => FilePath -> Text -> m (Either String (Template a))
-compileTemplate templPath template = do
+compileTemplate templPath template =
+  compileTemplateWithCustomPipes templPath template []
+
+compileTemplateWithCustomPipes :: (TemplateMonad m, TemplateTarget a)
+                => FilePath -> Text -> CustomPipes m' -> m (Either String (Template a))
+compileTemplateWithCustomPipes templPath template customPipes0 = do
   res <- P.runParserT (pTemplate <* P.eof)
            PState{ templatePath    = templPath
                  , partialNesting  = 1
@@ -44,6 +50,7 @@ compileTemplate templPath template = do
                  , firstNonspace   = P.initialPos templPath
                  , nestedCol       = Nothing
                  , insideDirective = False
+                 , customPipes     = map fst customPipes0
                  } templPath template
   case res of
        Left e   -> return $ Left $ show e
@@ -57,6 +64,7 @@ data PState =
          , firstNonspace   :: P.SourcePos
          , nestedCol       :: Maybe Int
          , insideDirective :: Bool
+         , customPipes     :: [String]
          }
 
 type Parser = P.ParsecT Text PState
@@ -404,7 +412,13 @@ pPipe = do
     "left"       -> Block LeftAligned <$> pBlockWidth <*> pBlockBorders
     "right"      -> Block RightAligned <$> pBlockWidth <*> pBlockBorders
     "center"     -> Block Centered <$> pBlockWidth <*> pBlockBorders
-    custom       -> return (Custom custom)
+    _otherwise   -> do
+      cps <- customPipes <$> P.getState
+      if pipeName `elem` cps
+      then return (Custom pipeName)
+      else fail $ "Unknown pipe " ++ pipeName
+
+
 
 pBlockWidth :: Monad m => Parser m Int
 pBlockWidth = P.try (do
