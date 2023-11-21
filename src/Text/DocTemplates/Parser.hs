@@ -404,7 +404,7 @@ pPipe = do
     "left"       -> Block LeftAligned <$> pBlockWidth <*> pBlockBorders
     "right"      -> Block RightAligned <$> pBlockWidth <*> pBlockBorders
     "center"     -> Block Centered <$> pBlockWidth <*> pBlockBorders
-    _            -> fail $ "Unknown pipe " ++ pipeName
+    custom       -> return (Custom custom)
 
 pBlockWidth :: Monad m => Parser m Int
 pBlockWidth = P.try (do

@@ -80,6 +80,18 @@ unitTests = [
                        :: Val T.Text) mempty))
                   Left e  -> T.pack e
       res @?= "hello this is a test of the wrapping\nhello this\nis a test\nof the\nwrapping"
+  , testCase "custom pipe" $ do
+      (templ :: Either String (Template T.Text)) <-
+        compileTemplate "foo" "$foo/totitle$"
+      let res :: T.Text
+          res = case templ of
+                  Right t -> render Nothing
+                   (renderTemplateWithCustomPipes t (Context $ M.insert "foo"
+                     (SimpleVal $
+                       DL.hsep ["hello", "this", "is", "a", "test"]
+                       :: Val T.Text) mempty) [("totitle", T.toTitle)])
+                  Left e  -> T.pack e
+      res @?= "Hello This Is A Test"
   ]
 
 {- The test "golden" files are structured as follows:
