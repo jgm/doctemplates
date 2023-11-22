@@ -34,6 +34,7 @@ module Text.DocTemplates.Internal
       , Pipe(..)
       , Alignment(..)
       , Border(..)
+      , CustomPipe(..)
       , CustomPipes
       ) where
 
@@ -99,7 +100,7 @@ data Pipe =
     | ToRoman
     | NoWrap
     | Block Alignment Int Border
-    | Custom String
+    | Custom String [Text]
     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
 data Alignment =
@@ -331,8 +332,8 @@ applyPipe (Block align n border) _cps val =
                         constructor n d <>
                         toBorder (borderRight border)
        _           -> val
-applyPipe (Custom pipe) cps val = case lookup pipe cps of
-  Just f -> mapMText f val
+applyPipe (Custom pipe args) cps val = case lookup pipe (map (\cp -> (pipeName cp, pipeFunction cp)) cps) of
+  Just f -> mapMText (f args) val
   Nothing -> return val
 
 nullToSimple :: Monoid a => Val a -> Val a
@@ -436,7 +437,13 @@ renderTemplate :: (TemplateTarget a, ToContext a b)
                => Template a -> b -> Doc a
 renderTemplate t x = runIdentity (renderTemplateWithCustomPipes t x [])
 
-type CustomPipes m = [(String, Text -> m Text)]
+data CustomPipe m = CustomPipe
+  { pipeName     :: String
+  , pipeArgsLen  :: Int
+  , pipeFunction :: [Text] -> Text -> m Text
+  }
+
+type CustomPipes m = [CustomPipe m]
 
 renderTemplateWithCustomPipes :: (TemplateTarget a, ToContext a b, Monad m)
                               => Template a -> b -> CustomPipes m -> m (Doc a)

@@ -418,6 +418,8 @@ module Text.DocTemplates ( renderTemplate
                          , FromContext(..)
                          , Template  -- export opaque type
                          , Doc(..)
+                         , CustomPipes
+                         , CustomPipe(..)
                          ) where
 
 import qualified Data.Text.IO as TIO
@@ -426,7 +428,7 @@ import Data.Text (Text)
 import Text.DocTemplates.Parser (compileTemplate, compileTemplateWithCustomPipes)
 import Text.DocTemplates.Internal ( TemplateMonad(..), Context(..),
             Val(..), ToContext(..), FromContext(..), TemplateTarget,
-            Template, renderTemplate, renderTemplateWithCustomPipes )
+            Template, CustomPipes, CustomPipe(..), renderTemplate, renderTemplateWithCustomPipes )
 
 -- | Compile a template from a file.  IO errors will be
 -- raised as exceptions; template parsing errors result in

@@ -82,9 +82,13 @@ unitTests = [
                   Left e  -> T.pack e
       res @?= "hello this is a test of the wrapping\nhello this\nis a test\nof the\nwrapping"
   , testCase "custom pipe" $ do
-      let cps = [("totitle", (return . T.toTitle :: T.Text -> Identity T.Text))]
+      let replace :: [T.Text] -> T.Text -> Identity T.Text
+          replace [needle, replacement] haystack = return (T.replace needle replacement haystack)
+
+          cps :: CustomPipes Identity
+          cps = [CustomPipe { pipeName = "replace", pipeArgsLen = 2, pipeFunction = replace }]
       (templ :: Either String (Template T.Text)) <-
-        compileTemplateWithCustomPipes "foo" "$foo/totitle$" cps
+        compileTemplateWithCustomPipes "foo" "$foo/replace \"this\" \"THIS\"$" cps
       let res :: T.Text
           res = case templ of
                   Right t -> render Nothing
@@ -93,9 +97,9 @@ unitTests = [
                        DL.hsep ["hello", "this", "is", "a", "test"]
                        :: Val T.Text) mempty) cps)
                   Left e  -> T.pack e
-      res @?= "Hello This Is A Test"
+      res @?= "hello THIS is a test"
   , testCase "monadic custom pipe" $ do
-      let cps = [("totitle", (return . T.toTitle :: T.Text -> IO T.Text))]
+      let cps = [CustomPipe "totitle" 0 (const (return . T.toTitle) :: [T.Text] -> T.Text -> IO T.Text)]
       (templ :: Either String (Template T.Text)) <-
         compileTemplateWithCustomPipes "foo" "$foo/totitle$" cps
       let io :: IO T.Text

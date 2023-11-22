@@ -50,7 +50,7 @@ compileTemplateWithCustomPipes templPath template customPipes0 = do
                  , firstNonspace   = P.initialPos templPath
                  , nestedCol       = Nothing
                  , insideDirective = False
-                 , customPipes     = map fst customPipes0
+                 , customPipes     = map (\cp -> (pipeName cp, pipeArgsLen cp)) customPipes0
                  } templPath template
   case res of
        Left e   -> return $ Left $ show e
@@ -64,7 +64,7 @@ data PState =
          , firstNonspace   :: P.SourcePos
          , nestedCol       :: Maybe Int
          , insideDirective :: Bool
-         , customPipes     :: [String]
+         , customPipes     :: [(String, Int)]
          }
 
 type Parser = P.ParsecT Text PState
@@ -393,9 +393,9 @@ pVar = do
 pPipe :: Monad m => Parser m Pipe
 pPipe = do
   P.char '/'
-  pipeName <- P.many1 P.letter
+  pipeName0 <- P.many1 P.letter
   P.notFollowedBy P.letter
-  case pipeName of
+  case pipeName0 of
     "uppercase"  -> return ToUppercase
     "lowercase"  -> return ToLowercase
     "pairs"      -> return ToPairs
@@ -414,11 +414,19 @@ pPipe = do
     "center"     -> Block Centered <$> pBlockWidth <*> pBlockBorders
     _otherwise   -> do
       cps <- customPipes <$> P.getState
-      if pipeName `elem` cps
-      then return (Custom pipeName)
-      else fail $ "Unknown pipe " ++ pipeName
+      case lookup pipeName0 cps of
+        Nothing -> fail $ "Unknown pipe " ++ pipeName0
+        Just argsLen -> do
+          args <- P.count argsLen pText
+          return (Custom pipeName0 args)
 
-
+pText :: Monad m => Parser m Text
+pText = do
+  _ <- P.many1 P.space
+  P.char '"'
+  xs <- P.many (P.satisfy (/= '"'))
+  P.char '"'
+  return $ fromString xs
 
 pBlockWidth :: Monad m => Parser m Int
 pBlockWidth = P.try (do
