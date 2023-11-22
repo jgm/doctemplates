@@ -360,7 +360,7 @@ toRoman x
   | otherwise = Nothing
 
 applyPipes :: (Monad m, TemplateTarget a) => [Pipe] -> CustomPipes m -> Val a -> m (Val a)
-applyPipes fs cps x = foldM (\ih f -> applyPipe f cps ih) x $ reverse fs
+applyPipes fs cps x = foldM (\ih f -> applyPipe f cps ih) x fs
 
 multiLookup :: TemplateTarget a => [Text] -> Val a -> Val a
 multiLookup [] x = x
