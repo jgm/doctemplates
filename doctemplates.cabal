@@ -33,7 +33,7 @@ library
                        text-conversions,
                        aeson,
                        text,
-                       doclayout >= 0.4 && < 0.5,
+                       doclayout >= 0.4 && < 0.6,
                        containers,
                        vector,
                        filepath,
@@ -51,7 +51,7 @@ test-suite doctemplates-test
   main-is:             test.hs
   build-depends:       base,
                        doctemplates,
-                       doclayout >= 0.4 && < 0.5,
+                       doclayout >= 0.4 && < 0.6,
                        containers,
                        aeson,
                        Glob,
@@ -70,7 +70,7 @@ benchmark doctemplates-bench
   Main-Is:         bench.hs
   Hs-Source-Dirs:  bench
   Build-Depends:   doctemplates,
-                   doclayout >= 0.4 && < 0.5,
+                   doclayout >= 0.4 && < 0.6,
                    base >= 4.8 && < 5,
                    criterion >= 1.0,
                    filepath,
