@@ -1,5 +1,17 @@
 # doctemplates
 
+# 0.11.0.1
+
+  * Bump version bounds for doclayout.
+
+  * Fix typos.
+
+# 0.11
+
+  * Remove HsYAML depenedency.
+
+  * Remove upper bound for criterion.
+
 ## 0.10.0.2
 
   * Use doclayout 0.4.
