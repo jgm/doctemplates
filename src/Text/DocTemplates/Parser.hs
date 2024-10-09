@@ -253,7 +253,7 @@ pInterpolate = do
     P.notFollowedBy (P.char '(') -- bare partial
     return (cl, v)
   res <- (P.char ':' *> (pPartialName >>= pPartial (Just var)))
-      <|> Iterate var (Interpolate (Variable ["it"] [])) <$> pSep
+      <|> Iterate var (Interpolate (Variable ["it"] [] False)) <$> pSep
       <|> return (Interpolate var)
   P.skipMany pSpaceOrTab
   closer
@@ -377,10 +377,11 @@ pOpen = pOpenDollar <|> pOpenBraces
 
 pVar :: Monad m => Parser m Variable
 pVar = do
+  required <- True <$ P.try (P.string "!") <|> pure False
   first <- pIdentPart <|> pIt
   rest <- P.many (P.char '.' *> pIdentPart)
   pipes <- P.many pPipe
-  return $ Variable (first:rest) pipes
+  return $ Variable (first:rest) pipes required
 
 pPipe :: Monad m => Parser m Pipe
 pPipe = do

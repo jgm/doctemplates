@@ -22,6 +22,8 @@
 
 module Text.DocTemplates.Internal
       ( renderTemplate
+      , renderTemplateM
+      , MissingRequired(..)
       , TemplateMonad(..)
       , Context(..)
       , Val(..)
@@ -39,6 +41,7 @@ import Data.Text.Conversions (FromText(..), ToText(..))
 import Data.Aeson (Value(..), ToJSON(..), FromJSON(..), Result(..), fromJSON)
 import Control.Monad.Identity
 import qualified Control.Monad.State.Strict as S
+import Control.Monad.Trans
 import Data.Char (chr, ord)
 import Data.Maybe (fromMaybe)
 import qualified Data.Text.Read as T
@@ -116,14 +119,15 @@ data Variable =
   Variable
     { varParts   :: [Text]
     , varPipes   :: [Pipe]
+    , varRequired   :: Bool
     }
   deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
 
 instance Semigroup Variable where
-  Variable xs fs <> Variable ys gs = Variable (xs <> ys) (fs <> gs)
+  Variable xs fs r <> Variable ys gs r' = Variable (xs <> ys) (fs <> gs) (r || r')
 
 instance Monoid Variable where
-  mempty = Variable mempty mempty
+  mempty = Variable mempty mempty False
   mappend = (<>)
 
 type TemplateTarget a =
@@ -373,22 +377,42 @@ instance Monoid (Resolved a) where
   mappend = (<>)
   mempty = Resolved False []
 
-resolveVariable :: TemplateTarget a
-                => Variable -> Context a -> Resolved a
+class Monad m => MissingRequired m where
+  missingRequired :: Variable -> m (Resolved a)
+
+instance MissingRequired m => MissingRequired (RenderStateM m) where
+  missingRequired = lift . missingRequired
+
+instance MissingRequired Identity where
+  missingRequired = const $ pure $ Resolved False []
+
+instance MissingRequired (Either Text) where
+  missingRequired v = Left msg
+    where
+      msg = "The required variable '" <> name <> "' could not be found in the context."
+      name = T.intercalate "." $ varParts v
+
+resolveVariable :: (TemplateTarget a, MissingRequired m)
+                => Variable -> Context a -> m (Resolved a)
 resolveVariable v ctx = resolveVariable' v (MapVal ctx)
 
-resolveVariable' :: TemplateTarget a
-                 => Variable -> Val a -> Resolved a
+resolveVariable' :: forall a m. (TemplateTarget a, MissingRequired m)
+                 => Variable -> Val a -> m (Resolved a)
 resolveVariable' v val =
   case applyPipes (varPipes v) $ multiLookup (varParts v) val of
-    ListVal xs    -> mconcat $ map (resolveVariable' mempty) xs
+    ListVal xs    -> foldMapA (resolveVariable' mempty) xs
     SimpleVal d
-      | DL.isEmpty d -> Resolved False []
-      | otherwise    -> Resolved True [removeFinalNl d]
-    MapVal _      -> Resolved True ["true"]
-    BoolVal True  -> Resolved True ["true"]
-    BoolVal False -> Resolved False ["false"]
-    NullVal       -> Resolved False []
+      | DL.isEmpty d -> resolved False []
+      | otherwise    -> resolved True [removeFinalNl d]
+    MapVal _      -> resolved True ["true"]
+    BoolVal True  -> resolved True ["true"]
+    BoolVal False -> resolved False ["false"]
+    NullVal
+      | varRequired v -> missingRequired v
+      | otherwise -> resolved False []
+  where
+    resolved x y = pure $ Resolved x y
+    foldMapA f = foldr (\x y -> (<>) <$> f x <*> y) (pure mempty)
 
 removeFinalNl :: Doc a -> Doc a
 removeFinalNl DL.NewLine        = mempty
@@ -408,36 +432,41 @@ withVariable var ctx f =
  where
   setVarVal x =
     addToContext var x $ Context $ M.insert "it" x $ unContext ctx
-  addToContext (Variable [] _) _ (Context ctx') = Context ctx'
-  addToContext (Variable (v:vs) fs) x (Context ctx') =
+  addToContext (Variable [] _ _) _ (Context ctx') = Context ctx'
+  addToContext (Variable (v:vs) fs r) x (Context ctx') =
     Context $ M.adjust
               (\z -> case z of
                        _ | null vs -> x
                        MapVal m    ->
-                         MapVal $ addToContext (Variable vs fs) x m
+                         MapVal $ addToContext (Variable vs fs r) x m
                        _ -> z) v ctx'
 
-type RenderState = S.State Int
+type RenderStateM m = S.StateT Int m
 
 -- | Render a compiled template in a "context" which provides
 -- values for the template's variables.
 renderTemplate :: (TemplateTarget a, ToContext a b)
                => Template a -> b -> Doc a
-renderTemplate t x = S.evalState (renderTemp t (toContext x)) 0
+renderTemplate t x = runIdentity $ renderTemplateM t x
 
-updateColumn :: TemplateTarget a => Doc a -> RenderState (Doc a)
+renderTemplateM :: forall a b m. (TemplateTarget a, ToContext a b, MissingRequired m)
+                => Template a -> b -> m (Doc a)
+renderTemplateM t x = S.evalStateT (renderTemp t (toContext x)) 0
+
+updateColumn :: forall a m. (TemplateTarget a, Monad m)
+             => Doc a -> RenderStateM m (Doc a)
 updateColumn x = do
   S.modify $ DL.updateColumn x
   return x
 
-renderTemp :: forall a . TemplateTarget a
-           => Template a -> Context a -> RenderState (Doc a)
+renderTemp :: forall a m. (TemplateTarget a, MissingRequired m)
+           => Template a -> Context a -> RenderStateM m (Doc a)
 renderTemp (Literal t) _ = updateColumn t
 renderTemp (Interpolate v) ctx =
-  case resolveVariable v ctx of
-    Resolved _ xs -> updateColumn (mconcat xs)
+  resolveVariable v ctx >>=
+    \(Resolved _ xs) -> updateColumn (mconcat xs)
 renderTemp (Conditional v ift elset) ctx =
-  case resolveVariable v ctx of
+  resolveVariable v ctx >>= \rv -> case rv of
     Resolved False _ -> renderTemp elset ctx
     Resolved True _  -> renderTemp ift ctx
 renderTemp (Iterate v t sep) ctx = do
