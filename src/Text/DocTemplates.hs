@@ -405,8 +405,10 @@ Currently the following pipes are predefined:
 -}
 
 module Text.DocTemplates ( renderTemplate
+                         , renderTemplateWithCustomPipes
                          , compileTemplate
                          , compileTemplateFile
+                         , compileTemplateWithCustomPipes
                          , applyTemplate
                          , TemplateMonad(..)
                          , TemplateTarget
@@ -416,15 +418,17 @@ module Text.DocTemplates ( renderTemplate
                          , FromContext(..)
                          , Template  -- export opaque type
                          , Doc(..)
+                         , CustomPipes
+                         , CustomPipe(..)
                          ) where
 
 import qualified Data.Text.IO as TIO
 import Text.DocLayout (Doc(..))
 import Data.Text (Text)
-import Text.DocTemplates.Parser (compileTemplate)
+import Text.DocTemplates.Parser (compileTemplate, compileTemplateWithCustomPipes)
 import Text.DocTemplates.Internal ( TemplateMonad(..), Context(..),
             Val(..), ToContext(..), FromContext(..), TemplateTarget,
-            Template, renderTemplate )
+            Template, CustomPipes, CustomPipe(..), renderTemplate, renderTemplateWithCustomPipes )
 
 -- | Compile a template from a file.  IO errors will be
 -- raised as exceptions; template parsing errors result in
@@ -447,4 +451,3 @@ applyTemplate fp t val = do
     case res of
       Left   s  -> return $ Left s
       Right  t' -> return $ Right $ renderTemplate t' val
-
