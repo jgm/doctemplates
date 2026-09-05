@@ -34,7 +34,7 @@ library
                        aeson,
                        text,
                        doclayout >= 0.4 && < 0.6,
-                       containers,
+                       containers >= 0.6.0.1,
                        vector,
                        filepath,
                        parsec,

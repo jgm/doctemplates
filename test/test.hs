@@ -80,6 +80,28 @@ unitTests = [
                        :: Val T.Text) mempty))
                   Left e  -> T.pack e
       res @?= "hello this is a test of the wrapping\nhello this\nis a test\nof the\nwrapping"
+  , testCase "getVariables" $ do
+      (res :: Either String (Template T.Text)) <-
+        compileTemplate "" "$b$$a$$if(foo.bar)$$b$$else$$baz$$endif$"
+      fmap getVariables res @?= Right ["b", "a", "foo.bar", "baz"]
+  , testCase "getVariables excludes loop-bound variables" $ do
+      (res :: Either String (Template T.Text)) <-
+        compileTemplate ""
+          "$for(employee)$$employee.name$: $it.salary$ $company$$sep$$separator$$endfor$"
+      fmap getVariables res @?= Right ["employee", "company", "separator"]
+  , testCase "getVariables excludes it in bracketed loop" $ do
+      (res :: Either String (Template T.Text)) <-
+        compileTemplate "" "$items[, ]$"
+      fmap getVariables res @?= Right ["items"]
+  , testCase "getVariables with nested loops" $ do
+      (res :: Either String (Template T.Text)) <-
+        compileTemplate ""
+          "$for(a)$$for(a.b)$$it$$a.c$$x$$endfor$$endfor$"
+      fmap getVariables res @?= Right ["a", "x"]
+  , testCase "getVariables includes it outside of loops" $ do
+      (res :: Either String (Template T.Text)) <-
+        compileTemplate "" "$it$"
+      fmap getVariables res @?= Right ["it"]
   ]
 
 {- The test "golden" files are structured as follows:

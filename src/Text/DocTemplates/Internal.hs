@@ -22,6 +22,7 @@
 
 module Text.DocTemplates.Internal
       ( renderTemplate
+      , getVariables
       , TemplateMonad(..)
       , Context(..)
       , Val(..)
@@ -52,9 +53,10 @@ import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Data.Text (Text)
 import qualified Data.Map as M
+import Data.Containers.ListUtils (nubOrd)
 import qualified Data.Vector as V
 import Data.Scientific (floatingOrInteger)
-import Data.List (intersperse)
+import Data.List (intersperse, isPrefixOf)
 #if MIN_VERSION_base(4,11,0)
 #else
 import Data.Semigroup
@@ -424,6 +426,28 @@ type RenderState = S.State Int
 renderTemplate :: (TemplateTarget a, ToContext a b)
                => Template a -> b -> Doc a
 renderTemplate t x = S.evalState (renderTemp t (toContext x)) 0
+
+-- | Retrieve the names of all free variables used in a template,
+-- in the order in which they first occur, without duplicates.
+-- The parts of a multipart variable (@foo.bar@) are separated
+-- by periods.  Variables bound inside a @for@ loop (the loop
+-- variable, fields underneath it, and the anaphoric variable
+-- @it@) are not included.
+getVariables :: Template a -> [Text]
+getVariables = nubOrd . map (T.intercalate ".") . go
+ where
+  go (Interpolate v)       = [varParts v]
+  go (Conditional v t1 t2) = varParts v : go t1 <> go t2
+  go (Iterate v t1 t2)     = varParts v :
+                             filter (not . boundBy v) (go t1) <> go t2
+  go (Nested t)            = go t
+  go (Partial _ t)         = go t
+  go (Literal _)           = []
+  go (Concat t1 t2)        = go t1 <> go t2
+  go Empty                 = []
+  -- inside the body of @for(v)@, variables under v are rebound
+  -- to the current list item, and "it" refers to the item itself
+  boundBy v parts = varParts v `isPrefixOf` parts || take 1 parts == ["it"]
 
 updateColumn :: TemplateTarget a => Doc a -> RenderState (Doc a)
 updateColumn x = do
