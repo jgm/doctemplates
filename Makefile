@@ -1,17 +1,8 @@
 all:
-	stack test --test-arguments="${TESTARGS}"
-
-bench:
-	stack bench
+	cabl test --test-arguments="${TESTARGS}"
 
 clean:
-	stack clean
-
-prof:
-	stack build --profile
-
-repl:
-	stack ghci src/Text/DocTemplates.hs --ghc-options=-XOverloadedStrings
+	cabal clean
 
 DocTemplates.tmp.hs: README.md src/Text/DocTemplates.hs
 	sed -n '1,//p;n;/^[A-Z]/q;p' src/Text/DocTemplates.hs > $@
@@ -25,8 +16,8 @@ example.tmp.hs: README.md
 haddock: DocTemplates.tmp.hs example.tmp.hs
 	cp $< src/Text/DocTemplates.hs
 	rm $<
-	stack haddock
-	stack runghc -- -isrc example.tmp.hs
+	cabal haddock
+	cabal runghc -- -isrc example.tmp.hs
 	rm example.tmp.hs
 
-.PHONY: all clean bench repl prof
+.PHONY: all clean bench repl
