@@ -305,7 +305,9 @@ applyPipe Chomp val = mapDoc DL.chomp val
 applyPipe ToAlpha val = mapText toAlpha val
   where toAlpha t =
           case T.decimal t of
-            Right (y,"") -> fromString [chr (ord 'a' + (y `mod` 26) - 1)]
+            Right (y,"")
+              | y > (0 :: Int) -> fromString
+                                    [chr (ord 'a' + ((y - 1) `mod` 26))]
             _            -> t
 applyPipe ToRoman val = mapText toRoman' val
   where toRoman' t =

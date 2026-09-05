@@ -80,6 +80,18 @@ unitTests = [
                        :: Val T.Text) mempty))
                   Left e  -> T.pack e
       res @?= "hello this is a test of the wrapping\nhello this\nis a test\nof the\nwrapping"
+  , testCase "alpha pipe" $ do
+      (templ :: Either String (Template T.Text)) <-
+        compileTemplate "foo" "$one/alpha$ $twentysix/alpha$ $twentyseven/alpha$ $zero/alpha$"
+      let res :: T.Text
+          res = case templ of
+                  Right t -> render Nothing
+                   (renderTemplate t (object [ "one" .= (1 :: Int)
+                                             , "twentysix" .= (26 :: Int)
+                                             , "twentyseven" .= (27 :: Int)
+                                             , "zero" .= (0 :: Int) ]))
+                  Left e  -> T.pack e
+      res @?= "a z a 0"
   , testCase "getVariables" $ do
       (res :: Either String (Template T.Text)) <-
         compileTemplate "" "$b$$a$$if(foo.bar)$$b$$else$$baz$$endif$"
