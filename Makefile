@@ -1,5 +1,5 @@
 all:
-	cabl test --test-arguments="${TESTARGS}"
+	cabal test --test-options="${TESTARGS}"
 
 clean:
 	cabal clean
