@@ -337,8 +337,8 @@ nullToSimple x = x
 -- | Convert number 0 < x < 4000 to lowercase roman numeral.
 toRoman :: Int -> Maybe Text
 toRoman x
-  | x >= 1000
-  , x < 4000  = ("m" <>) <$> toRoman (x - 1000)
+  | x >= 4000 = Nothing
+  | x >= 1000 = ("m" <>) <$> toRoman (x - 1000)
   | x >= 900  = ("cm" <>) <$> toRoman (x - 900)
   | x >= 500  = ("d" <>) <$> toRoman (x - 500)
   | x >= 400  = ("cd" <>) <$> toRoman (x - 400)
