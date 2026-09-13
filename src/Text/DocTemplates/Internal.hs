@@ -41,7 +41,6 @@ import Data.Aeson (Value(..), ToJSON(..), FromJSON(..), Result(..), fromJSON)
 import Control.Monad.Identity
 import qualified Control.Monad.State.Strict as S
 import Data.Char (chr, ord)
-import Data.Maybe (fromMaybe)
 import qualified Data.Text.Read as T
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -254,6 +253,11 @@ mapDoc f val =
     BoolVal b          -> BoolVal b
     NullVal            -> NullVal
 
+-- | The full rendered text of a 'Doc', regardless of how it is
+-- divided into chunks.
+renderedText :: TemplateTarget a => Doc a -> Text
+renderedText = toText . DL.render Nothing
+
 mapText :: TemplateTarget a => (Text -> Text) -> Val a -> Val a
 mapText f val =
   runIdentity (traverse (return . fromText . f . toText) val)
@@ -299,21 +303,22 @@ applyPipe AllButLast val =
 applyPipe Reverse val =
   case val of
     ListVal xs  -> ListVal (reverse xs)
-    SimpleVal{} -> mapText T.reverse val
+    SimpleVal d -> SimpleVal $ DL.literal . fromText . T.reverse $
+                     renderedText d
     _           -> val
 applyPipe Chomp val = mapDoc DL.chomp val
-applyPipe ToAlpha val = mapText toAlpha val
-  where toAlpha t =
-          case T.decimal t of
+applyPipe ToAlpha val = mapDoc toAlpha val
+  where toAlpha d =
+          case T.decimal (renderedText d) of
             Right (y,"")
               | y > (0 :: Int) -> fromString
                                     [chr (ord 'a' + ((y - 1) `mod` 26))]
-            _            -> t
-applyPipe ToRoman val = mapText toRoman' val
-  where toRoman' t =
-         case T.decimal t of
-           Right (y,"") -> fromMaybe t (toRoman y)
-           _            -> t
+            _            -> d
+applyPipe ToRoman val = mapDoc toRoman' val
+  where toRoman' d =
+         case T.decimal (renderedText d) of
+           Right (y,"") -> maybe d (DL.literal . fromText) (toRoman y)
+           _            -> d
 applyPipe NoWrap val = mapDoc DL.nowrap val
 applyPipe (Block align n border) val =
   let constructor = case align of
