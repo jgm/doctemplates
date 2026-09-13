@@ -105,7 +105,7 @@ value of the @salary@ field of the object that is the value of the
     calling program will escape the strings appropriately for the output
     format.)
 -   If the value of the variable is a boolean value, it will be rendered
-    as @true@ if true, or as empty if false.
+    as @true@ if true, or as @false@ if false.
 -   If the value is a list, the values will be concatenated.
 -   If the value is a map, the string @true@ will be rendered.
 -   Every other value will be rendered as the empty string.
