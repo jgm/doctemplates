@@ -1,5 +1,5 @@
 name:                doctemplates
-version:             0.11.0.1
+version:             0.11.1
 synopsis:            Pandoc-style document templates
 description:         This is the text templating system used by pandoc.
                      It supports variable interpolation, iteration,
@@ -33,7 +33,7 @@ library
                        text-conversions,
                        aeson,
                        text,
-                       doclayout >= 0.4 && < 0.6,
+                       doclayout >= 0.4 && < 0.7,
                        containers >= 0.6.0.1,
                        vector,
                        filepath,
@@ -51,7 +51,7 @@ test-suite doctemplates-test
   main-is:             test.hs
   build-depends:       base,
                        doctemplates,
-                       doclayout >= 0.4 && < 0.6,
+                       doclayout >= 0.4 && < 0.7,
                        containers,
                        aeson,
                        Glob,
@@ -70,7 +70,7 @@ benchmark doctemplates-bench
   Main-Is:         bench.hs
   Hs-Source-Dirs:  bench
   Build-Depends:   doctemplates,
-                   doclayout >= 0.4 && < 0.6,
+                   doclayout >= 0.4 && < 0.7,
                    base >= 4.8 && < 5,
                    criterion >= 1.0,
                    filepath,

@@ -1,12 +1,25 @@
 # doctemplates
 
-# 0.11.0.1
+## 0.11.1
+
+  * Add `getVariables`, returning free variables of a template [API change].
+    Returns variable names in order of first occurrence, without
+    duplicates, excluding variables bound inside for loops (the loop
+    variable, fields underneath it, and the anaphoric variable `it`).
+
+  * Fix off-by-one error in `alpha` pipe.
+
+  * Fix `roman` pipe for numbers >= 4000.
+
+  * Fix `reverse`, `alpha`, `roman` pipes on multi-chunk Docs.
+
+## 0.11.0.1
 
   * Bump version bounds for doclayout.
 
   * Fix typos.
 
-# 0.11
+## 0.11
 
   * Remove HsYAML depenedency.
 
