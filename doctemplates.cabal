@@ -15,13 +15,12 @@ maintainer:          jgm@berkeley.edu
 copyright:           2016-19 John MacFarlane
 category:            Text
 build-type:          Simple
--- extra-source-files:
-data-files:          README.md
+extra-doc-files:     README.md
                      changelog.md
 extra-source-files:  test/*.test
                      test/*.txt
                      test/*.tex
-cabal-version:       >=1.10
+cabal-version:       2.0
 
 library
   hs-source-dirs:      src
