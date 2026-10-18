@@ -1,5 +1,28 @@
 # doctemplates
 
+## 0.12
+
+  * `Context` now keeps its fields in the order in which they were
+    added [API change].  The type of the `Context` constructor's field
+    (`unContext`) is now `OMap Text (Val a)` (from `Data.Map.Ordered` in
+    ordered-containers) instead of `Map Text (Val a)`.
+
+  * The `Semigroup` instance for `Context` is still left-biased: if a
+    field is in both contexts, the value from the first is used.
+    Fields keep their positions from the first context; fields only in
+    the second are added at the end.
+
+  * The `pairs` pipe now produces key/value pairs in the order of the
+    fields, rather than sorted by key.
+
+  * Add a `ToContext` instance for `OMap Text b`.
+
+  * `ToJSON` instances for `Context` and `Val`: add `toEncoding`, which
+    encodes fields in order.  (`toJSON` cannot preserve the order,
+    because aeson's `Object` does not record the order of its keys.)
+
+  * Depend on ordered-containers.  Require aeson >= 2.0.
+
 ## 0.11.1
 
   * Add `getVariables`, returning free variables of a template [API change].

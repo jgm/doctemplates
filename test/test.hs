@@ -3,7 +3,7 @@
 
 import Text.DocLayout (render)
 import qualified Text.DocLayout as DL
-import qualified Data.Map as M
+import qualified Data.Map.Ordered as OM
 import Text.DocTemplates
 import Test.Tasty.Golden
 import Test.Tasty
@@ -73,11 +73,11 @@ unitTests = [
       let res :: T.Text
           res = case templ of
                   Right t -> render (Just 10)
-                   (renderTemplate t (Context $ M.insert "foo"
-                     (SimpleVal $
+                   (renderTemplate t (Context $ OM.singleton ("foo",
+                     SimpleVal $
                        DL.hsep ["hello", "this", "is", "a",
                                 "test", "of", "the", "wrapping"]
-                       :: Val T.Text) mempty))
+                       :: Val T.Text)))
                   Left e  -> T.pack e
       res @?= "hello this is a test of the wrapping\nhello this\nis a test\nof the\nwrapping"
   , testCase "alpha pipe" $ do

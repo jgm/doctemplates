@@ -37,7 +37,9 @@ module Text.DocTemplates.Internal
       ) where
 
 import Data.Text.Conversions (FromText(..), ToText(..))
-import Data.Aeson (Value(..), ToJSON(..), FromJSON(..), Result(..), fromJSON)
+import Data.Aeson (Value(..), ToJSON(..), FromJSON(..), Result(..), fromJSON,
+                   pairs, (.=))
+import qualified Data.Aeson.Key as K
 import Control.Monad.Identity
 import qualified Control.Monad.State.Strict as S
 import Data.Char (chr, ord)
@@ -52,6 +54,7 @@ import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Data.Text (Text)
 import qualified Data.Map as M
+import qualified Data.Map.Ordered as OM
 import Data.Containers.ListUtils (nubOrd)
 import qualified Data.Vector as V
 import Data.Scientific (floatingOrInteger)
@@ -131,9 +134,19 @@ type TemplateTarget a =
   (HasChars a, ToText a, FromText a)
 
 -- | A 'Context' defines values for template's variables.
-newtype Context a = Context { unContext :: M.Map Text (Val a) }
-  deriving (Show, Semigroup, Monoid, Traversable, Foldable, Functor,
-            Data, Typeable)
+-- The fields are kept in the order in which they were added.
+newtype Context a = Context { unContext :: OM.OMap Text (Val a) }
+  deriving (Show, Traversable, Foldable, Functor, Data, Typeable)
+
+-- | Left-biased:  if a field is in both contexts, the value from the
+-- first is used.  Fields keep their positions in the first context;
+-- fields only in the second are added at the end.
+instance Semigroup (Context a) where
+  Context m1 <> Context m2 = Context (OM.unionWithL (\_ v1 _ -> v1) m1 m2)
+
+instance Monoid (Context a) where
+  mempty = Context OM.empty
+  mappend = (<>)
 
 -- | A variable value.
 data Val a =
@@ -174,7 +187,11 @@ instance {-# OVERLAPPING #-} TemplateTarget [a] => ToContext [a] [a] where
 
 instance ToContext a b => ToContext a (M.Map Text b) where
   toVal     = MapVal . toContext
-  toContext = Context . M.map toVal
+  toContext = Context . OM.fromList . M.toList . M.map toVal
+
+instance ToContext a b => ToContext a (OM.OMap Text b) where
+  toVal     = MapVal . toContext
+  toContext = Context . fmap toVal
 
 instance TemplateTarget a => ToContext a Bool where
   toVal True  = BoolVal True
@@ -193,7 +210,7 @@ instance TemplateTarget a => ToContext a Value where
 class FromContext a b where
   fromVal :: Val a -> Maybe b
   lookupContext :: Text -> Context a -> Maybe b
-  lookupContext t (Context m) = M.lookup t m >>= fromVal
+  lookupContext t (Context m) = OM.lookup t m >>= fromVal
 
 instance TemplateTarget a => FromContext a (Val a) where
   fromVal = Just
@@ -224,7 +241,7 @@ instance TemplateTarget a => FromJSON (Val a) where
                                   Left (r :: Double)   -> show r
                                   Right (i :: Integer) -> show i
       Bool b      -> return $ BoolVal b
-      Object _    -> MapVal . Context <$> parseJSON v
+      Object _    -> MapVal . Context . OM.fromList . M.toList <$> parseJSON v
       _           -> return NullVal
 
 instance TemplateTarget a => FromJSON (Context a) where
@@ -234,8 +251,13 @@ instance TemplateTarget a => FromJSON (Context a) where
       MapVal o -> return o
       _        -> fail "Expecting MapVal"
 
+-- Encoding with 'toEncoding' preserves the order of fields;
+-- 'toJSON' cannot, because aeson's 'Object' does not record the
+-- order of its keys.
 instance TemplateTarget a => ToJSON (Context a) where
-  toJSON (Context m) = toJSON m
+  toJSON (Context m) = toJSON (OM.toMap m)
+  toEncoding (Context m) =
+    pairs $ mconcat [K.fromText k .= v | (k, v) <- OM.assocs m]
 
 instance TemplateTarget a => ToJSON (Val a) where
   toJSON NullVal = Null
@@ -243,12 +265,17 @@ instance TemplateTarget a => ToJSON (Val a) where
   toJSON (ListVal xs) = toJSON xs
   toJSON (SimpleVal d) = toJSON $ toText $ DL.render Nothing d
   toJSON (BoolVal b) = toJSON b
+  toEncoding NullVal = toEncoding Null
+  toEncoding (MapVal m) = toEncoding m
+  toEncoding (ListVal xs) = toEncoding xs
+  toEncoding (SimpleVal d) = toEncoding $ toText $ DL.render Nothing d
+  toEncoding (BoolVal b) = toEncoding b
 
 mapDoc :: TemplateTarget a => (Doc a -> Doc a) -> Val a -> Val a
 mapDoc f val =
   case val of
     SimpleVal d        -> SimpleVal (f d)
-    MapVal (Context m) -> MapVal (Context $ M.map (mapDoc f) m)
+    MapVal (Context m) -> MapVal (Context $ fmap (mapDoc f) m)
     ListVal xs         -> ListVal $ map (mapDoc f) xs
     BoolVal b          -> BoolVal b
     NullVal            -> NullVal
@@ -267,7 +294,7 @@ applyPipe ToLength val = SimpleVal $ fromString . show $ len
   where
    len = case val of
            SimpleVal d        -> T.length . toText $ DL.render Nothing d
-           MapVal (Context m) -> M.size m
+           MapVal (Context m) -> OM.size m
            ListVal xs         -> length xs
            BoolVal _          -> 0
            NullVal            -> 0
@@ -276,12 +303,12 @@ applyPipe ToLowercase val = mapText T.toLower val
 applyPipe ToPairs val =
   case val of
     MapVal (Context m) ->
-      ListVal $ map toPair $ M.toList m
+      ListVal $ map toPair $ OM.assocs m
     ListVal xs         ->
       ListVal $ map toPair $ zip (map (fromString . show) [(1::Int)..]) xs
     _                  -> val
  where
-  toPair (k, v) = MapVal $ Context $ M.fromList
+  toPair (k, v) = MapVal $ Context $ OM.fromList
                     [ ("key", SimpleVal $ fromString . T.unpack $ k)
                     , ("value", v) ]
 applyPipe FirstItem val =
@@ -365,7 +392,7 @@ applyPipes fs x = foldr applyPipe x $ reverse fs
 multiLookup :: TemplateTarget a => [Text] -> Val a -> Val a
 multiLookup [] x = x
 multiLookup (t:vs) (MapVal (Context o)) =
-  case M.lookup t o of
+  case OM.lookup t o of
     Nothing -> NullVal
     Just v' -> multiLookup vs v'
 multiLookup _ _ = NullVal
@@ -416,11 +443,11 @@ withVariable var ctx f =
     val' -> (:[]) <$> f (setVarVal val')
  where
   setVarVal x =
-    addToContext var x $ Context $ M.insert "it" x $ unContext ctx
+    addToContext var x $ Context $ unContext ctx OM.|> ("it", x)
   addToContext (Variable [] _) _ (Context ctx') = Context ctx'
   addToContext (Variable (v:vs) fs) x (Context ctx') =
-    Context $ M.adjust
-              (\z -> case z of
+    Context $ OM.alter
+              (fmap $ \z -> case z of
                        _ | null vs -> x
                        MapVal m    ->
                          MapVal $ addToContext (Variable vs fs) x m
