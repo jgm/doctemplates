@@ -8,5 +8,5 @@ on:
   workflow_dispatch:
 
 jobs:
-  call-build:
+  ci:
     uses: jgm/workflow-templates/.github/workflows/haskell-ci.yml@main
