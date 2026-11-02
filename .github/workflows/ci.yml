@@ -9,4 +9,4 @@ on:
 
 jobs:
   ci:
-    uses: jgm/workflow-templates/.github/workflows/haskell-ci.yml@main
+    uses: jgm/workflows/.github/workflows/haskell-ci.yml@main
