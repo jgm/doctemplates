@@ -1,5 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-unused-do-bind #-}
 {- |
    Module      : Text.DocTemplates.Parser
    Copyright   : Copyright (C) 2009-2019 John MacFarlane
