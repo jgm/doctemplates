@@ -48,7 +48,6 @@ import Text.DocLayout (Doc, HasChars)
 import qualified Text.DocLayout as DL
 import Data.String (IsString(..))
 import Data.Data (Data)
-import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Data.Text (Text)
 import qualified Data.Map as M
@@ -71,7 +70,7 @@ data Template a =
      | Literal (Doc a)
      | Concat (Template a) (Template a)
      | Empty
-     deriving (Show, Read, Data, Typeable, Generic, Eq, Ord,
+     deriving (Show, Read, Data, Generic, Eq, Ord,
                Foldable, Traversable, Functor)
 
 instance Semigroup a => Semigroup (Template a) where
@@ -98,19 +97,19 @@ data Pipe =
     | ToRoman
     | NoWrap
     | Block Alignment Int Border
-    deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
+    deriving (Show, Read, Data, Generic, Eq, Ord)
 
 data Alignment =
       LeftAligned
     | Centered
     | RightAligned
-    deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
+    deriving (Show, Read, Data, Generic, Eq, Ord)
 
 data Border = Border
      { borderLeft  :: Text
      , borderRight :: Text
      }
-    deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
+    deriving (Show, Read, Data, Generic, Eq, Ord)
 
 -- | A variable which may have several parts (@foo.bar.baz@).
 data Variable =
@@ -118,7 +117,7 @@ data Variable =
     { varParts   :: [Text]
     , varPipes   :: [Pipe]
     }
-  deriving (Show, Read, Data, Typeable, Generic, Eq, Ord)
+  deriving (Show, Read, Data, Generic, Eq, Ord)
 
 instance Semigroup Variable where
   Variable xs fs <> Variable ys gs = Variable (xs <> ys) (fs <> gs)
@@ -132,8 +131,7 @@ type TemplateTarget a =
 
 -- | A 'Context' defines values for template's variables.
 newtype Context a = Context { unContext :: M.Map Text (Val a) }
-  deriving (Show, Semigroup, Monoid, Traversable, Foldable, Functor,
-            Data, Typeable)
+  deriving (Show, Semigroup, Monoid, Traversable, Foldable, Functor, Data)
 
 -- | A variable value.
 data Val a =
@@ -142,7 +140,7 @@ data Val a =
   | MapVal     (Context a)
   | BoolVal    Bool
   | NullVal
-  deriving (Show, Traversable, Foldable, Functor, Data, Typeable)
+  deriving (Show, Traversable, Foldable, Functor, Data)
 
 -- | The 'ToContext' class provides automatic conversion to
 -- a 'Context' or 'Val'.
@@ -372,7 +370,7 @@ multiLookup _ _ = NullVal
 
 -- The Bool indicates whether it's a true or false value.
 data Resolved a = Resolved Bool [Doc a]
-   deriving (Show, Read, Data, Typeable, Generic, Eq, Ord,
+   deriving (Show, Read, Data, Generic, Eq, Ord,
              Foldable, Traversable, Functor)
 
 instance Semigroup (Resolved a) where
